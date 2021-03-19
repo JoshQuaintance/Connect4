@@ -12,6 +12,7 @@ from menu import Menu
 def main():
     menu = Menu()
     menu.print_title()
+    menu.print_main_menu()
     print()
 
 

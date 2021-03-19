@@ -49,3 +49,7 @@ class Menu:
         print(f"{VERTICAL_LINE}                                  {VERTICAL_LINE}")
         print(f"{VERTICAL_LINE}                                  {VERTICAL_LINE}")
         print(f"{ BOTTOM_LEFT_CORNER }{ HORIZONTAL_LINE * 34 }{ BOTTOM_RIGHT_CORNER }")
+
+
+    def print_main_menu():
+        print()
