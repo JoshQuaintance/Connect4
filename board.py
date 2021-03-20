@@ -1,6 +1,5 @@
 from os import system, name as sysname
-from drawingblocks import DrawingBlocks
-import chalk
+from utils.drawingblocks import DrawingBlocks
 
 # ? THIS DECLARATIONS ARE BASICALL USELESS TO REMOVE WARNINGS
 # ? It can also be used as a list of all the ASCII drawing

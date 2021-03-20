@@ -4,11 +4,10 @@ On this file, there is going to be warnings of undeclared variables. If it's
 because of the ASCII drawing lines, ignore it, because it's getting declared on runtime
 """
 
-import PyInquirer as inquirer
-from drawingblocks import DrawingBlocks
+from InquirerPy import inquirer
+from utils.drawingblocks import DrawingBlocks
 from os import name, system
-from prompt import choose
-from logs import err, warn
+from utils.logs import err, warn
 
 # ? THIS DECLARATIONS ARE BASICALL USELESS TO REMOVE WARNINGS
 # ? It can also be used as a list of all the ASCII drawing
@@ -71,7 +70,7 @@ class Menu:
 
         availableActions = ['Start a New Game', 'Setting Options', 'Quit']
 
-        user_action = choose('Choose an action:', availableActions)
+        user_action = inquirer.select('Choose an action:', availableActions)
 
         if (user_action == availableActions[2]):
             print('Exiting ...')
