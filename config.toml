@@ -3,6 +3,7 @@
 [modules]
 InquirerPy
 colorama
+termcolor
 [end]
 
 [user_conf]

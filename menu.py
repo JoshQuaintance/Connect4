@@ -70,7 +70,7 @@ class Menu:
 
         availableActions = ['Start a New Game', 'Setting Options', 'Quit']
 
-        user_action = inquirer.select('Choose an action:', availableActions)
+        user_action = inquirer.select('Choose an action:', availableActions).execute()
 
         if (user_action == availableActions[2]):
             print('Exiting ...')

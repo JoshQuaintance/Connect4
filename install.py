@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 
-from sys import argv
+from sys import argv, modules
 from os import system
-import requests
 
 # Get the arguments
-modules = argv[1:]
+arguments = argv[1:]
+modules_to_install = []
 
 def prettify(modules):
     ending_amount = len([x for x in modules if x == '[end]'])
@@ -25,7 +25,8 @@ def prettify(modules):
     
 
 def write_modules():
-    print('Installing modules and adding it to dependencies.toml')
+    import requests
+    print('Installing modules and adding it to config.toml')
 
     # Open the file to read, create one if it doesn't exit
     fin = open('./config.toml', 'r+')
@@ -42,7 +43,7 @@ def write_modules():
     modules_area = content[start_idx + 1 : ending_idx]
 
     # Loop through every modules
-    for module in modules:
+    for module in arguments:
         print()
         print(f'Checking pip if \'{ module }\' is a real package ...')
 
@@ -54,17 +55,19 @@ def write_modules():
             print(f'The module \'{ module }\' does not exist in pip\'s database.')
             print('Make sure you check if your spelling is correct!')
             continue
-
+        
         print('Module exist, continuing process ...')
 
         # If the module exist
         if (module in modules_area):
             # Inform user
             print(f'The module \'{ module }\' already exist in dependencies, ignoring...')
+            # arguments.remove(module)
             continue
 
         # If the module doesn't exist in the dependencies
         else:
+            modules_to_install.append(module)
             content.insert(ending_idx, module)
 
     # Prettify the string
@@ -78,9 +81,31 @@ def write_modules():
 
     fout.write(formatted)
 
+def installModules(all = False):
+    fin = open('./config.toml', 'r+').read().split('\n')
+
+    # Get starting index
+    start_idx = fin.index('[modules]')
+
+    # Get the modules_end
+    ending_idx = fin.index('[end]', start_idx)
+
+    modules_area = fin[start_idx + 1 : ending_idx]
+    
+    if all:
+
+        system(f'python -m pip install {" ".join(modules_area)}')
+    else:
+        system(f'python -m pip install {" ".join(modules_to_install)}')
+
+if __name__ == '__main__':
+    print('Installing necessary module to run ...')
+    system('python -m pip install requests')
+
+    write_modules()
+    if (len(arguments) > 0):
+        installModules()
+    else:
+        installModules(True)
 
 
-write_modules()
-
-
-print(f'python -m pip install {" ".join(modules)}')
