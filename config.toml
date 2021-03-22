@@ -2,8 +2,8 @@
 # ON PRODUCTION (READY FOR USE, TYPICALLY AN EXE), THIS WILL BE USED FOR USER CONFIGURATION
 [modules]
 InquirerPy
+colorama
 [end]
 
 [user_conf]
-
 [end]
