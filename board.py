@@ -1,3 +1,4 @@
+from utils.getarrow import getarrow
 from os import system, name as sysname
 from utils.drawingblocks import DrawingBlocks
 from colorama import init
@@ -19,6 +20,10 @@ MIDDLE_CONNECT_RIGHT = None
 FOUR_WAY = None
 MIDDLE_CONNECT_UP = None
 MIDDLE_CONNECT_DOWN = None
+D_TOP_LEFT_CORNER = None
+D_TOP_RIGHT_CORNER = None
+D_BOTTOM_LEFT_CORNER = None
+D_BOTTOM_RIGHT_CORNER = None
 
 # Dynamically declares all the drawing blocks variables
 for key, val in DrawingBlocks().getAll(return_format='dict').items():
@@ -78,3 +83,14 @@ class Board:
 
 x = Board()
 x.draw_board()
+
+while(True):
+    key = getarrow()
+
+    if (key == 'L_KEY' and x.selected > 1):
+        x.selected -= 1
+        x.draw_board()
+
+    if (key == 'R_KEY' and x.selected < 7):
+        x.selected += 1
+        x.draw_board()
