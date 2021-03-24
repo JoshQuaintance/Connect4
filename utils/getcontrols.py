@@ -2,7 +2,7 @@ from utils.getch import getch
 from os import name
 
 
-class _GetArrow:
+class _GetControls:
     def __init__(self) -> None:
         if name == 'nt':
             self.caller = _Windows()
@@ -17,12 +17,16 @@ class _Windows:
         
         first_ch = getch()
 
+        if (first_ch == b'\r'):
+            retKey = 'ENTER_KEY'
+
         if (first_ch == b'\x03'):
             exit()
         
-        if (first_ch == b'\x00'):
+        if (first_ch == b'\x00' or first_ch == b'\xe0'):
 
             key = getch()
+
 
             if (key == b'H'):
                 retKey = 'U_KEY'
@@ -56,4 +60,4 @@ class _Unix:
         
         return retKey
 
-getarrow = _GetArrow()
+getcontrols = _GetControls()
