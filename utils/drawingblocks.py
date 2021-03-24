@@ -100,7 +100,7 @@ class DrawingBlocks:
         self.__blocks_dict = {
             'VERTICAL_LINE': '\u2503',
             'HORIZONTAL_LINE': '\u2501',
-            'TOP_LEFT_CORNER': '\u250F',
+            'TOP_LEFT_CORNER': '┏', #\u250F
             'TOP_RIGHT_CORNER': '\u2513',
             'BOTTOM_LEFT_CORNER': '\u2517',
             'BOTTOM_RIGHT_CORNER': '\u251B',
