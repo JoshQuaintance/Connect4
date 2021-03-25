@@ -40,11 +40,25 @@ for key, val in DrawingBlocks().getAll(return_format='dict').items():
 class Board:
     def __init__(self):
         # 7 * 6 Board filled with Whatever is in the string
-        self.board_arr = [['.'] * 7] * 6
+        self.board_arr = [
+            ['.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.'],
+            ['.', '.', '.', '.', '.', '.', '.']
+        ]
+        self.highest = [0, 0, 0, 0, 0, 0, 0]
 
         self.highlighted = 1
 
+        self.turn = 1
+
         self.selected = 1
+        self.last_move = None
+
+        self.message = ''
+
         self.clear()
 
         # For testing purposes
@@ -54,26 +68,55 @@ class Board:
         #     ['.', 'B', 'B', 'B', '.', '.', '.'],
         #     ['.', 'B', 'B', 'R', '.', '.', '.'],
         #     ['.', 'R', 'R', 'B', 'R', 'B', '.'],
-        #     ['.', 'B', 'R', 'B', 'R', 'R', 'B']
+        #     ['R', 'B', 'R', 'B', 'R', 'R', 'B']
         # ]
+
+        # self.highest = [1, 5, 5, 5, 2, 2, 1]
 
     def clear(self):
         if sysname == 'nt':
             system('cls')
         else:
             system('clear')
-    # ! Implement a move function that adds in blocks into the array
-    # def move(self, col):
+
+    # Implement a move function that adds in blocks into the array
+    def move(self, col):
+        # Get the highest in the column
+        highest_on_column = self.highest[col - 1]
+
+        # Reset message
+        self.message = ' ' * (len(self.message) + 2)
+
+        # if the highest is bigger than 5, means board is full
+        if (highest_on_column > 5):
+            # Change the message that will be printed
+            self.message = f'Column {col} is Full! Select a different column'
+            # Break out
+            return
+
+        # Apply the 'R' or 'B' on selected column
+        self.board_arr[5 - highest_on_column][col - 1] = 'R' if self.turn == 1 else 'B'
+
+        # Change the highest into 1 more than before
+        self.highest[col - 1] += 1
+
+        # Change the turn
+        self.turn = 1 if self.turn == 0 else 0
+
+        # Change the lastMove
+        self.last_move = self.selected
 
     def draw_board(self):
         # self.clear()
 
+        # Add a newline at the top
         board_str = [['\n']]
+
+        # ! MATH STUFF THAT I PROBABLY NEED TO EXPLAIN LATER
+        board_str.append([' ' * (2) + ' ' * (4 * (self.highlighted - 1)) + colored('O', 'red' if self.turn == 1 else 'blue') + ' ' * 18])
 
         # print()
         board_str.append([f'{TOP_LEFT_CORNER}' + f'   {MIDDLE_CONNECT_DOWN}' * 6 + f'   {TOP_RIGHT_CORNER}'])
-
-        # print()
 
         seperator = f'{MIDDLE_CONNECT_RIGHT}   ' + (f'{FOUR_WAY}   ') * 6 + MIDDLE_CONNECT_LEFT
 
@@ -93,7 +136,8 @@ class Board:
 
             elif (2 <= i < 4):
                 if (i == 2):
-                    board_row_str.append(VERTICAL_LINE + f'{"SOMEBODY CHOSE X or O":^35}' + VERTICAL_LINE + '\n')
+                    info_chosen = f'{"Blue" if self.turn == 1 else "Red"} Chose {self.last_move}' if self.last_move != None else f'{"":^35}'
+                    board_row_str.append(f'{VERTICAL_LINE}{info_chosen:^35}{VERTICAL_LINE}\n')
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
@@ -118,8 +162,6 @@ class Board:
         # Last line
         board_str.append([f'{BOTTOM_LEFT_CORNER}' + (f'{HORIZONTAL_LINE * 3}' + MIDDLE_CONNECT_UP)
                           * 6 + f'{HORIZONTAL_LINE * 3}{BOTTOM_RIGHT_CORNER}'])
-
-        # selected = 2
 
         # Top Selector
         _top = []
@@ -149,6 +191,9 @@ class Board:
                 _bottom.append('    ')
         board_str.append(_bottom)
 
+        # Message
+        board_str.append(self.message)
+
         # Print the whole thing as a string
         print_at(1, 1, '\n'.join([''.join(row) for row in board_str]))
 
@@ -170,8 +215,14 @@ while(True):
         x.draw_board()
         continue
 
+    # If enter key is pressed, means something is selected
     if (key == 'ENTER_KEY'):
+        # Change the selected into the highlighted
         x.selected = x.highlighted
-        break
 
-print(f'{x.selected} is selected')
+        # Move
+        x.move(x.selected)
+
+        # Draw board
+        x.draw_board()
+        continue
