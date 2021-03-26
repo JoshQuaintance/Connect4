@@ -50,9 +50,15 @@ class Board:
         ]
         self.highest = [0, 0, 0, 0, 0, 0, 0]
 
+
         self.highlighted = 1
 
+        self.player1 = 'Player 1'
+        self.player2 = 'Player 2'
+
+        self.moves = 0
         self.turn = 1
+        self.round = 1
 
         self.selected = 1
         self.last_move = None
@@ -102,9 +108,15 @@ class Board:
 
         # Change the turn
         self.turn = 1 if self.turn == 0 else 0
+        self.moves += 1
 
         # Change the lastMove
         self.last_move = self.selected
+
+        if self.round > 3:
+            self.check_win()
+        
+        self.round = round(self.moves / 2)
 
     def draw_board(self):
         # self.clear()
@@ -196,6 +208,15 @@ class Board:
 
         # Print the whole thing as a string
         print_at(1, 1, '\n'.join([''.join(row) for row in board_str]))
+    
+    def check_win(self, char = ''):
+        if char == '': char = 'R' if self.turn == 1 else 'B'
+        col = self.selected - 1
+        row = 5 - self.highest[col] + 1
+        board = self.board_arr
+
+        print(board[row][col])
+
 
 
 # ! Selecting which column of the number
@@ -216,13 +237,15 @@ while(True):
         continue
 
     # If enter key is pressed, means something is selected
-    if (key == 'ENTER_KEY'):
+    if (key == 'ENTER_KEY' or key == 'SPACE_KEY'):
         # Change the selected into the highlighted
         x.selected = x.highlighted
 
         # Move
         x.move(x.selected)
 
+
         # Draw board
         x.draw_board()
+
         continue

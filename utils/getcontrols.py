@@ -8,25 +8,29 @@ class _GetControls:
             self.caller = _Windows()
         else:
             self.caller = _Unix()
+
     def __call__(self):
         return self.caller()
+
 
 class _Windows:
     def __call__(self):
         retKey = ''
-        
+
         first_ch = getch()
+
+        if (first_ch == b' '):
+            retKey = 'SPACE_KEY'
 
         if (first_ch == b'\r'):
             retKey = 'ENTER_KEY'
 
         if (first_ch == b'\x03'):
             exit()
-        
+
         if (first_ch == b'\x00' or first_ch == b'\xe0'):
 
             key = getch()
-
 
             if (key == b'H'):
                 retKey = 'U_KEY'
@@ -36,8 +40,9 @@ class _Windows:
                 retKey = 'D_KEY'
             elif (key == b'K'):
                 retKey = 'L_KEY'
-        
+
         return retKey
+
 
 class _Unix:
     def __call__(self):
@@ -46,8 +51,8 @@ class _Unix:
 
         if (key == '\033'):
             getch()
-    
-            arrow_key = getch() 
+
+            arrow_key = getch()
 
             if (arrow_key == 'A'):
                 retKey = 'U_KEY'
@@ -57,7 +62,8 @@ class _Unix:
                 retKey = 'D_KEY'
             elif (arrow_key == 'D'):
                 retKey = 'L_KEY'
-        
+
         return retKey
+
 
 getcontrols = _GetControls()
