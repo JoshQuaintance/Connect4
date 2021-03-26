@@ -4,6 +4,8 @@
 InquirerPy
 colorama
 termcolor
+websocket
+websockets
 [end]
 
 [user_conf]
