@@ -50,7 +50,6 @@ class Board:
         ]
         self.highest = [0, 0, 0, 0, 0, 0, 0]
 
-
         self.highlighted = 1
 
         self.player1 = 'Player 1'
@@ -114,9 +113,11 @@ class Board:
         self.last_move = self.selected
 
         if self.round > 3:
+            self.draw_board()
             self.check_win()
-        
-        self.round = round(self.moves / 2)
+
+        if (self.moves % 2 == 0):
+            self.round += 1
 
     def draw_board(self):
         # self.clear()
@@ -125,7 +126,8 @@ class Board:
         board_str = [['\n']]
 
         # ! MATH STUFF THAT I PROBABLY NEED TO EXPLAIN LATER
-        board_str.append([' ' * (2) + ' ' * (4 * (self.highlighted - 1)) + colored('O', 'red' if self.turn == 1 else 'blue') + ' ' * 18])
+        board_str.append([' ' * (2) + ' ' * (4 * (self.highlighted - 1)) +
+                          colored('O', 'red' if self.turn == 1 else 'blue') + ' ' * 18])
 
         # print()
         board_str.append([f'{TOP_LEFT_CORNER}' + f'   {MIDDLE_CONNECT_DOWN}' * 6 + f'   {TOP_RIGHT_CORNER}'])
@@ -146,23 +148,37 @@ class Board:
                 board_row_str.append(seperator)
                 board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
-            elif (2 <= i < 4):
+            elif (2 <= i < 5):
                 if (i == 2):
-                    info_chosen = f'{"Blue" if self.turn == 1 else "Red"} Chose {self.last_move}' if self.last_move != None else f'{"":^35}'
-                    board_row_str.append(f'{VERTICAL_LINE}{info_chosen:^35}{VERTICAL_LINE}\n')
+                    info_chosen = f'{colored("Blue", "blue") if self.turn == 1 else colored("Red", "red")} Chose {self.last_move}' if self.last_move != None else ''
+
+                    if info_chosen == '':
+                        board_row_str.append(f'{VERTICAL_LINE}{info_chosen:^35}{VERTICAL_LINE}\n')
+
+                    else:
+                        board_row_str.append(f'{VERTICAL_LINE}{info_chosen:^44}{VERTICAL_LINE}\n')
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
                 elif (i == 3):
-                    board_row_str.append(VERTICAL_LINE + f'{"It is somebody turn":^35}' + VERTICAL_LINE + '\n')
+                    turn = f'{colored("Red", "red") if self.turn == 1 else colored("Blue", "blue")}'
+                    info = 'It is ' + f'{turn:^5}' + '\'s turn'
+
+                    board_row_str.append(VERTICAL_LINE + f"{info + '!':^44}" + VERTICAL_LINE + '\n')
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
+
+                elif (i == 4):
+                    board_row_str.append(VERTICAL_LINE + f'{f"Round {self.round}":^35}' + VERTICAL_LINE + '\n')
+                    board_row_str.append(seperator)
+                    board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
+
                 else:
                     board_row_str.append(VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
-            elif (i == 4):
+            elif (i == 5):
                 board_row_str.append(f'{BOTTOM_LEFT_CORNER}{HORIZONTAL_LINE * info_box_width}{BOTTOM_RIGHT_CORNER}\n')
                 board_row_str.append(seperator)
 
@@ -208,15 +224,19 @@ class Board:
 
         # Print the whole thing as a string
         print_at(1, 1, '\n'.join([''.join(row) for row in board_str]))
-    
-    def check_win(self, char = ''):
-        if char == '': char = 'R' if self.turn == 1 else 'B'
+
+    def check_win(self, char=''):
+        if char == '':
+            char = 'R' if self.turn == 1 else 'B'
         col = self.selected - 1
         row = 5 - self.highest[col] + 1
         board = self.board_arr
 
-        print(board[row][col])
+        if (not any('.' in brd for brd in board)):
+            print('Tie')
+            exit()
 
+        last_selected = board[row][col]
 
 
 # ! Selecting which column of the number
@@ -243,7 +263,6 @@ while(True):
 
         # Move
         x.move(x.selected)
-
 
         # Draw board
         x.draw_board()
