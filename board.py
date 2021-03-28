@@ -40,15 +40,15 @@ for key, val in DrawingBlocks().getAll(return_format='dict').items():
 class Board:
     def __init__(self):
         # 7 * 6 Board filled with Whatever is in the string
-        self.board_arr = [
-            ['.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.'],
-            ['.', '.', '.', '.', '.', '.', '.']
-        ]
-        self.highest = [0, 0, 0, 0, 0, 0, 0]
+        # self.board_arr = [
+        #     ['.', '.', '.', '.', '.', '.', '.'],
+        #     ['.', '.', '.', '.', '.', '.', '.'],
+        #     ['.', '.', '.', '.', '.', '.', '.'],
+        #     ['.', '.', '.', '.', '.', '.', '.'],
+        #     ['.', '.', '.', '.', '.', '.', '.'],
+        #     ['.', '.', '.', '.', '.', '.', '.']
+        # ]
+        # self.highest = [0, 0, 0, 0, 0, 0, 0]
 
         self.highlighted = 1
 
@@ -57,7 +57,7 @@ class Board:
 
         self.moves = 0
         self.turn = 1
-        self.round = 1
+        # self.round = 1
 
         self.selected = 1
         self.last_move = None
@@ -67,16 +67,17 @@ class Board:
         self.clear()
 
         # For testing purposes
-        # self.board_arr = [
-        #     ['.', '.', '.', '.', '.', '.', '.'],
-        #     ['.', 'R', 'R', 'B', '.', '.', '.'],
-        #     ['.', 'B', 'B', 'B', '.', '.', '.'],
-        #     ['.', 'B', 'B', 'R', '.', '.', '.'],
-        #     ['.', 'R', 'R', 'B', 'R', 'B', '.'],
-        #     ['R', 'B', 'R', 'B', 'R', 'R', 'B']
-        # ]
-
-        # self.highest = [1, 5, 5, 5, 2, 2, 1]
+        self.board_arr = [
+            ['.', '.', '.', '.', '.', '.', '.'],
+            ['.', 'R', 'R', 'B', '.', '.', '.'],
+            ['.', 'B', 'B', 'B', '.', '.', '.'],
+            ['.', 'B', 'B', 'R', '.', '.', '.'],
+            ['.', 'R', 'B', 'B', 'R', 'R', '.'],
+            ['R', 'B', 'R', 'B', 'R', 'R', 'B']
+        ]
+        self.round = 3
+        self.highest = [1, 5, 5, 5, 2, 2, 1]
+        # # # # 
 
     def clear(self):
         if sysname == 'nt':
@@ -225,6 +226,44 @@ class Board:
         # Print the whole thing as a string
         print_at(1, 1, '\n'.join([''.join(row) for row in board_str]))
 
+    def get_full_row(self, row):
+        return self.board_arr[row]
+    
+    def get_full_col(self, col):
+        return [row[col] for row in self.board_arr]
+            
+    def get_full_diag_right(self, row, col):
+        # If column is bigger than row (Top half of the board)
+        if (col > row):
+            
+            # If the row and column points to an area with only 3 in diagonal length
+            if (row <= 2 and col >= 4):
+
+                # Return -1
+                return ['']
+
+            # Otherwise
+            # DO SOME MAGIC THAT I'M TO LAZY TO EXPLAIN (I don't even know how it works)
+            return [self.board_arr[j][i] for j, i in enumerate(range(col - row, 7))]
+
+        # If the column is <= than row (Bottom half of the board)
+        if (col <= row):
+
+            # If the row and column points to an area with only 3 in diagonal length
+            if (row >= 3 and col <=2):
+
+                # Return -1
+                return ['']
+
+            # Otherwise
+            # DO SOME MAGIC THAT I'M TO LAZY TO EXPLAIN (I don't even know how it works)
+            return [self.board_arr[row - col + i][i] for i in range(0, 6 - (row - col))]
+    
+    def get_full_diag_left(self, row, col):
+        print
+
+
+
     def check_win(self, char=''):
         if char == '':
             char = 'R' if self.turn == 1 else 'B'
@@ -232,11 +271,25 @@ class Board:
         row = 5 - self.highest[col] + 1
         board = self.board_arr
 
+        around = [self.get_full_row(row), self.get_full_col(col), self.get_full_diag_right(row, col)]
+        every_side = [''.join(side) for side in around]
+
+        if (any('BBBB' in side for side in every_side) or any('RRRR' in side for side in every_side)):
+            print(f'{colored("Blue", "blue") if self.turn == 1 else colored("Red", "red")} Won!')
+            exit()
+
+        # Check if there is any '.' inside the board (means it's empty)
         if (not any('.' in brd for brd in board)):
+
+            # If there is it's a tie
             print('Tie')
             exit()
 
-        last_selected = board[row][col]
+        # last_selected = board[row][col]
+
+        # around_the_board = []
+        
+        
 
 
 # ! Selecting which column of the number
