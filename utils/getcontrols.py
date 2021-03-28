@@ -25,6 +25,7 @@ class _Windows:
         if (first_ch == b'\r'):
             retKey = 'ENTER_KEY'
 
+        # If CTRL + C is pressed
         if (first_ch == b'\x03'):
             exit()
 
@@ -49,6 +50,16 @@ class _Unix:
         retKey = ''
         key = getch()
 
+        # If CTRL + C is pressed
+        if (key == '\3'):
+            exit()
+
+        if (key == ' '):
+            retKey = 'SPACE_KEY'
+
+        if (key == '\r'):
+            retKey = 'ENTER_KEY'
+
         if (key == '\033'):
             getch()
 
@@ -57,9 +68,9 @@ class _Unix:
             if (arrow_key == 'A'):
                 retKey = 'U_KEY'
             elif (arrow_key == 'B'):
-                retKey = 'R_KEY'
-            elif (arrow_key == 'C'):
                 retKey = 'D_KEY'
+            elif (arrow_key == 'C'):
+                retKey = 'R_KEY'
             elif (arrow_key == 'D'):
                 retKey = 'L_KEY'
 
