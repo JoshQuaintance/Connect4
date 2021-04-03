@@ -1,17 +1,15 @@
-import asyncio
-import websockets
+# import json
+from wsock.wsock import Socket
 
+sock = Socket(True)
 
-async def hello(websocket, path):
-    name = await websocket.recv()
-    print(f"< {name}")
+sock.subscribe('abc')
+recv = sock.recv_json()
+print(type(recv), recv)
 
-    greeting = f"Hello {name}!"
+sock.unsubscribe('abc')
+recv2 = sock.recv_json()
+print(type(recv2), recv2)
 
-    await websocket.send(greeting)
-    print(f"> {greeting}")
-
-start_server = websockets.serve(hello, "localhost", 8765)
-
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
+# recv = sock.recv_str()
+# print(type(recv), recv)

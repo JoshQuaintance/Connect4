@@ -1,16 +1,6 @@
-import asyncio
-import websockets
+from wsock.wsock import Socket
 
+sock = Socket(False)
 
-async def hello():
-    uri = "ws://localhost:8765"
-    async with websockets.connect(uri) as websocket:
-        name = input("What's your name? ")
-
-        await websocket.send(name)
-        print(f"Sent: {name}")
-
-        greeting = await websocket.recv()
-        print(f"Received: {greeting}")
-
-asyncio.get_event_loop().run_until_complete(hello())
+sock.bind('abc')
+sock.send_json({'message': 'hello', 'data': [1, 2, 3, 4, 5]})
