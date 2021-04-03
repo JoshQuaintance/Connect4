@@ -4,8 +4,8 @@
 InquirerPy
 colorama
 termcolor
-websocket
 websockets
+marshmallow
 [end]
 
 [user_conf]
