@@ -1,9 +1,7 @@
-from wsock.wsock import Socket
+from wsock.wsock import WSock
 
-sock = Socket(False)
+sock = WSock(False)
 
-# sock.bind('abc')
-# sock.send_json({'message': 'hello', 'data': [1, 2, 3, 4, 5]})
-
-sock.subscribe('abc')
 print(sock.recv_str())
+
+sock.send_str('Hello too')

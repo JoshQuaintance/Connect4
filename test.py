@@ -1,20 +1,7 @@
-# import json
-from wsock.wsock import Socket
+from wsock.wsock import WSock
 
-sock = Socket(True)
+s = WSock(True)
 
-# sock.subscribe('abc')
-# recv = sock.recv_json()
-# print(type(recv), recv)
+s.send_str('hello')
 
-from time import sleep
-
-sleep(5)
-
-sock.bind('abc')
-sock.send_str('Hello Guys')
-
-# print(sock.getMsg())
-
-# recv = sock.recv_str()
-# print(type(recv), recv)
+print(s.recv_str())
