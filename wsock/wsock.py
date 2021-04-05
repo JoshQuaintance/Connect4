@@ -2,7 +2,12 @@ import websockets
 import json
 import asyncio
 import uuid
+import threading
 from marshmallow import Schema, fields, post_load
+
+
+class DoneExec(Exception):
+    pass
 
 class MessageSchema(Schema):
     content = fields.Str()
@@ -57,14 +62,17 @@ class Socket:
         self.binded_topic = None
         self.use_topic = False
 
-        if (self.host):
-            self.topic = uuid.uuid4().hex[:6]
-            self._serve()
-
-
         self._message = None
         self._message_type_expected = None
         self._recv_type = None
+        self._action_called = None
+        self._socket_host_served = False
+
+        if (self.host):
+            self.topic = uuid.uuid4().hex[:6]
+            sock_loop = asyncio.new_event_loop()
+            sock_thread = threading.Thread(target=self._serve, args=(sock_loop,))
+            sock_thread.start()
 
 
     '''
@@ -139,64 +147,99 @@ class Socket:
         except websockets.exceptions.ConnectionClosedOK as e:
             print('OK')
 
-    def _serve(self):
+    def _serve(self, loop):
         ''' Serves ( starts ) the websocket server 
             
             Only used for host only
         '''
-        start_receiver = websockets.serve(self._recv, 'localhost', 8765)
+
+        asyncio.set_event_loop(loop)
+
+        async def _dummy_func(websocket, path):
+            if (self._socket_host_served == False):
+
+                # Create a message object 
+                message = Message(
+                    content = 'Server Started',
+                    topic = '',
+                    content_type = 'str',
+                )
+
+                # Dump the data ( serialize it )
+                data = MessageSchema().dumps(message)
+
+                # Dump it into stringified json then send it
+                await websocket.send(data)
+
+                self._socket_host_served = True
+
+            return
+            
+
+        start_receiver = websockets.serve(_dummy_func, 'localhost', 8765)
 
         asyncio.get_event_loop().run_until_complete(start_receiver)
+        asyncio.get_event_loop().run_forever()
 
+    def _recv_handler(self):
+        
+        while (True):
+            loop = asyncio.get_event_loop()
+
+            try:
+                loop.run_until_complete(self._recv(loop))
+    
+            except ConnectionRefusedError as e:
+                if ('Connect call failed' in str(e)):
+                    raise ConnectionError('Socket connection failed, check if server is started!\n If this socket is not a host, it cannot receive without a host server started')
+
+            except DoneExec as e:
+                print('done exec')
+                loop.close()
+                break
+
+            except websockets.exceptions.ConnectionClosedOK as e:
+                continue
+
+            else:
+                continue
+
+        # loop.close()
 
     '''
      * Listeners
     '''
 
-    async def _recv(self, websocket, path):
-        
-        # Get the data and load the json into a dict
-        data = json.loads(await websocket.recv())
+    async def _recv(self, loop):
+        async with websockets.connect('ws://localhost:8765') as websocket:
+            print('h')
+            data = ''
 
-        # Load the dict back into a Message object
-        data = MessageSchema().load(data)
+            # Get the data and load the json into a dict
+            try:
+                data = await websocket.recv()
+            except websockets.exceptions.ConnectionClosedOK as e:
+                print('closed')
+                pass
+
+            data = json.loads(data)
+
+            print(data)
 
 
-        print('cont: ', data.content)
-        print('topic: ', data.topic)
-        print('use: ', self.use_topic)
-        print('topics: ', self.topics)
-        print('cont_type: ', data.content_type)
-        print('expected: ', self._message_type_expected)
-        # Check to use topic or not if we do, check if the topic is similar
-        # If we don't use topic, then just run it
-        if (self.use_topic and data.topic in self.topics or self.use_topic == False):
 
-            # If the content type is not what is expected
-            if (data.content_type != self._message_type_expected):
-                
-                await self._close_sock(websocket)
+            # Load the dict back into a Message object
+            data = MessageSchema().load(data)
 
-                # Ignore the message
-                return
+            if (self.use_topic and data.topic in self.topics or self.use_topic == False):
+
+                # If the content type is not what is expected
+                if (data.content_type == self._message_type_expected):
             
-            # Get the current running loop
-            loop = asyncio.get_running_loop()
+                    # Make the _message into the content of the message
+                    self._message = json.loads(data.content) if data.content_type == dict else data.content
 
-            # Make the _message into the content of the message
-            self._message = json.loads(data.content) if data.content_type == dict else data.content
-
-            print(self._message)
-            print()
-
-            await websocket.close()
-            # await self._close_sock(websocket)
-
-            # End the loop 
-            loop.stop()
-
-        else:
-            await self._close_sock(websocket)
+                    raise DoneExec('DoneExecuting')
 
 
     '''
@@ -206,12 +249,12 @@ class Socket:
     async def _send(self, topic, msg):
         async with websockets.connect('ws://localhost:8765') as websocket:
             
-            print(type(msg), msg)
-
+            print('msg', msg)
+            print('topic', topic if topic != '' and type(topic) == str else self.binded_topic)
             # Create a message object 
             message = Message(
                 content = msg,
-                topic = topic if topic != '' and type(topic) == str else self.binded_topic or '',
+                topic = topic if topic != '' and type(topic) == str else self.binded_topic,
                 content_type = self._message_type_expected,
             )
 
@@ -224,6 +267,9 @@ class Socket:
     '''
      *  Callers
     '''
+
+    def getMsg(self):
+        return self._message
 
     def send_str(self, msg, topic = ''):
         
@@ -240,7 +286,7 @@ class Socket:
 
         self._message_type_expected = 'str'
 
-        asyncio.get_event_loop().run_forever()
+        self._recv_handler()
         
         # Return the message
         return self._message
@@ -249,9 +295,8 @@ class Socket:
 
         self._message_type_expected = 'dict'
 
-        asyncio.get_event_loop().run_forever()
+        self._recv_handler()
 
-        print('recv: ', self._message)
         
         # Return the message
         return self._message
