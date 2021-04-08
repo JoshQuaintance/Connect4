@@ -4,8 +4,9 @@ from typing import ByteString
 import uuid
 import asyncio
 from marshmallow import Schema, fields, post_load
-from threading import Thread
-
+from threading import Timer, Lock
+from _thread import *
+import sys
 
 class MessageSchema(Schema):
     content = fields.Str()
@@ -53,59 +54,81 @@ class Message:
 
 
 class Server:
-    def __init__(self):
+    def __init__(self, timeout: int = 0):
 
-        self._clients = {}
+        self._clients = []
+        self._clients_lock = Lock()
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._host = '127.0.0.1'
         self._port = 8765
+        self._socket_timeout = timeout
 
-        conn_handler = Thread(target=self.connection_handler)
+        self._sock.bind((self._host, self._port))
 
-        conn_handler.start()
+        self._sock.listen(2)
 
-    def connection_handler(self):
+        self._threads = []
+        self.thread_count = 0
 
-        sock = self._sock
+            
+        def stopExec():
+            self._sock.close()
 
-        sock.bind((self._host, self._port))
+            sys.exit()
+        try:
 
-        sock.listen()
+            while (True):
+                if (self._socket_timeout != 0):
 
-        def _conn_handler():
+                    timer = Timer(self._socket_timeout, stopExec)
 
-            message = client.recv(1024)
+                    timer.start()
 
-            data = message.decode()
+                c, addr = self._sock.accept()
+            
+                if (self._socket_timeout != 0):
+                    timer.cancel()
 
-            data = json.loads(data)
+                self._clients.append((c, addr))
 
-            value = data
+                start_new_thread(self.clientHandler, (c, addr))
 
-            data = MessageSchema().load(data)
+                self.thread_count += 1
 
-            if (data.content == 'close-server'):
-                exit()
+        except OSError as e:
+            # If the error is about the running something that is not a socket, just pass because the socket was closed
+            if (str(e) == '[WinError 10038] An operation was attempted on something that is not a socket'):
+                pass
+            else:
+                print(e)
 
-            print('Socket connected: ', data.content, value)
+        self._sock.close()
 
-        while (True):
-            client, addr = sock.accept()
+    def clientHandler(self, c, addr):
+        print(addr, 'is connected')
 
-            handler = Thread(target=_conn_handler)
+        try:
+            while (True):
+                data = c.recv(2048)
 
-            handler.join(10)
+                if not data: break
 
-            handler.set()
+                for client, address in self._clients:
+                    if (client != c):
+                        client.send(data)
 
-            handler.join()
 
-            break
+            c.close()
+            for client, address in self._clients:
+                if (address == addr):
+                    self._clients.remove((client, address))
+            
+            self.thread_count -= 1
+            exit()
 
-            # self._clients.append(())
 
-        exit()
-
+        except Exception as e:
+            print('err', e)
 
 class WSock:
     def __init__(self, host: bool):
@@ -116,11 +139,10 @@ class WSock:
         self._port = 8765
 
         self._sock = socket.socket()
+        self._sock.connect(('127.0.0.1', 8765))
 
         self._topics = []
         self._binded_topic = ''
-
-        self.send_str(self.sock_name)
 
     '''
      * Actions
@@ -142,11 +164,6 @@ class WSock:
      * Class Actions
     '''
 
-    def _restart_sock(self):
-        self._sock.close()
-
-        self._sock = socket.socket()
-
     '''
      * Receivers
     '''
@@ -154,17 +171,10 @@ class WSock:
     def _recv(self, topic, content_type):
 
         while (True):
-            try:
+            sock = self._sock
 
-                self._sock.connect(('127.0.0.1', self._port))
-
-            except ConnectionRefusedError as e:
-                print('Host socket connection closed!')
-                exit()
-
-            message = self._sock.recv(1024)
-
-            self._restart_sock()
+            
+            message = sock.recv(1024)
 
             data = message.decode()
 
@@ -189,8 +199,6 @@ class WSock:
     def _send(self, msg, topic, content_type):
         sock = self._sock
 
-        sock.connect(('127.0.0.1', 8765))
-
         message = Message(
             content=msg,
             topic=topic if topic != '' else self._binded_topic,
@@ -200,34 +208,6 @@ class WSock:
         data = MessageSchema().dumps(message)
 
         sock.send(bytes(data, 'utf-8'))
-
-        self._restart_sock()
-
-    # Main method to send message
-    # def _send(self, msg, topic, content_type):
-
-    #     self._sock.bind(('127.0.0.1', self._port))
-
-    #     self._sock.listen(2)
-
-    #     while (True):
-    #         client, addr = self._sock.accept()
-
-    #         message = Message(
-    #             content=msg,
-    #             topic=topic if topic != '' else self._binded_topic,
-    #             content_type=content_type
-    #         )
-
-    #         data = MessageSchema().dumps(message)
-
-    #         print(data)
-
-    #         client.send(bytes(data, 'utf-8'))
-
-    #         self._restart_sock()
-
-    #         break
 
     def send_str(self, msg, topic=''):
         self._send(msg, topic, 'str')
