@@ -8,6 +8,7 @@ from InquirerPy import inquirer
 from utils.drawingblocks import DrawingBlocks
 from os import name, system
 from utils.logs import err, warn
+from Game import Game
 
 # ? THIS DECLARATIONS ARE BASICALL USELESS TO REMOVE WARNINGS
 # ? It can also be used as a list of all the ASCII drawing
@@ -68,16 +69,19 @@ class Menu:
         print(f'{"Main Menu":^}')
         print()
 
-        availableActions = ['Start a New Game', 'Setting Options', 'Quit']
+        availableActions = ['Start a New Game', 'Watch a Game', 'Setting Options', 'Quit']
 
         user_action = inquirer.select('Choose an action:', availableActions).execute()
 
-        if (user_action == availableActions[2]):
+        if (user_action == availableActions[3]):
             print('Exiting ...')
             exit()
 
         if (user_action == availableActions[0]):
-            warn('IMPLEMENT A PLAY GAME')
+            game = Game() 
 
         if (user_action == availableActions[1]):
+            warn('h')
+
+        if (user_action == availableActions[2]):
             warn('Settings')

@@ -4,9 +4,11 @@ from typing import ByteString
 import uuid
 import asyncio
 from marshmallow import Schema, fields, post_load
-from threading import Timer, Lock
+from threading import Timer, Lock, Thread
 from _thread import *
 import sys
+import logging
+
 
 class MessageSchema(Schema):
     content = fields.Str()
@@ -65,28 +67,29 @@ class Server:
 
         self._sock.bind((self._host, self._port))
 
-        self._sock.listen(2)
+        self._sock.listen()
 
         self._threads = []
         self.thread_count = 0
 
-            
-        def stopExec():
-            self._sock.close()
+        t = Thread(target=self._start_server, daemon=False)
 
-            sys.exit()
+        t.start()
+
+    def _start_server(self):
+
         try:
 
             while (True):
-                if (self._socket_timeout != 0):
+                if (self._socket_timeout != 0 and len(self._clients) == 0):
 
-                    timer = Timer(self._socket_timeout, stopExec)
+                    timer = Timer(self._socket_timeout, self.stopExec)
 
                     timer.start()
 
                 c, addr = self._sock.accept()
-            
-                if (self._socket_timeout != 0):
+
+                if (self._socket_timeout != 0 and len(self._clients) == 0):
                     timer.cancel()
 
                 self._clients.append((c, addr))
@@ -104,36 +107,52 @@ class Server:
 
         self._sock.close()
 
+    def stopExec(self, msg=''):
+        logging.info(msg if msg != '' else 'Server timed out! No connection established under the timeout given ...')
+        self._sock.close()
+
+        sys.exit()
+
+    def _check_clients(self, addr):
+        for client, address in self._clients:
+            if (address == addr):
+                self._clients.remove((client, address))
+
+        if (len(self._clients) == 0):
+            self.stopExec('All clients disconnected, shutting down server ...')
+
     def clientHandler(self, c, addr):
-        print(addr, 'is connected')
+        logging.info(addr, 'is connected')
 
         try:
             while (True):
                 data = c.recv(2048)
 
-                if not data: break
+                if not data:
+                    break
 
                 for client, address in self._clients:
                     if (client != c):
                         client.send(data)
 
-
             c.close()
-            for client, address in self._clients:
-                if (address == addr):
-                    self._clients.remove((client, address))
-            
+
+            self._check_clients(addr)
+
             self.thread_count -= 1
             exit()
 
-
         except Exception as e:
-            print('err', e)
+
+            if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host'):
+                self._check_clients(addr)
+
+            else:
+                print('err', e)
+
 
 class WSock:
-    def __init__(self, host: bool):
-
-        self._host = host
+    def __init__(self):
         self.sock_name = f'Sock-{uuid.uuid4().hex[:4]}'
 
         self._port = 8765
@@ -173,7 +192,6 @@ class WSock:
         while (True):
             sock = self._sock
 
-            
             message = sock.recv(1024)
 
             data = message.decode()

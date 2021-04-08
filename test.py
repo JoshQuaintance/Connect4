@@ -1,13 +1,11 @@
 from wsock.wsock import WSock
 from time import sleep
 
-s = WSock(True)
+s = WSock()
 
 # s.send_str({'message': 'hello'})
 
 print(s.recv_str())
-
-
 
 # s.send_str('close-server')
 

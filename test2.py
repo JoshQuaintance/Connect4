@@ -1,7 +1,7 @@
 from wsock.wsock import WSock
 from time import sleep
 
-s = WSock(True)
+s = WSock()
 
 s.send_str('hello')
 
