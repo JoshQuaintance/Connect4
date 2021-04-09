@@ -200,7 +200,11 @@ class WSock:
 
             data = MessageSchema().load(data)
 
-            if ((topic != '' and data.topic == topic) or (data.topic in self._topics and len(self._topics) > 0) or (len(self._topics) == 0)):
+            if (
+                (topic != '' and data.topic == topic) or 
+                (data.topic in self._topics and len(self._topics) > 0) or 
+                (len(self._topics) == 0)
+            ):
                 if ((data.content_type == content_type)):
                     return json.loads(data.content) if content_type == dict else data.content
 

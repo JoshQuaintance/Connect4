@@ -12,6 +12,10 @@ class ClientInfo:
 
         self.server_name = server_name
 
+        self.address = ''
+
+        
+
 
 class Game:
     def __init__(self):
