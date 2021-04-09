@@ -3,6 +3,8 @@ from time import sleep
 
 s = WSock()
 
+s.bind('abc')
+
 s.send_str('hello')
 
 

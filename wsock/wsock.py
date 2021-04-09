@@ -123,6 +123,7 @@ class Server:
 
     def clientHandler(self, c, addr):
         logging.info(addr, 'is connected')
+        # print(addr, 'is connected')
 
         try:
             while (True):

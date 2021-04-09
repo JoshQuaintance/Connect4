@@ -5,6 +5,8 @@ s = WSock()
 
 # s.send_str({'message': 'hello'})
 
+s.subscribe('abc')
+
 print(s.recv_str())
 
 # s.send_str('close-server')

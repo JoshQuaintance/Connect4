@@ -3,10 +3,11 @@
 [modules]
 InquirerPy
 colorama
+marshmallow
 termcolor
 websockets
-marshmallow
 [end]
 
 [user_conf]
+{"username": "Josh", "default_server_name": "Serv", "live_reload": true}
 [end]
