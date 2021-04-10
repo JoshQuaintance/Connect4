@@ -4,7 +4,6 @@ from InquirerPy import inquirer
 from utils.logs import err, warn
 from wsock.wsock import *
 from threading import Thread
-from print_at import print_at
 import uuid
 
 
@@ -57,8 +56,9 @@ class Game:
 
         token = uuid.uuid4().hex[:6]
 
-        # sock.bind(token)
-        # sock.subscribe(token)
+        sock.bind(token)
+        sock.subscribe(token)
+        print('Token: ', token)
 
         def _get_requests():
             while (True):
@@ -70,10 +70,9 @@ class Game:
 
         t.start()
 
-        print('Waiting for user to connect ...')
+        print('Waiting for a user to connect ...')
         while (True):
             user_requests = self._user_requesting
-            # print(user_requests)
 
             if (len(user_requests) == 0):
                 continue
@@ -89,8 +88,6 @@ class Game:
 
                 ).execute()
 
-                print(accept)
-
                 if (accept.lower() in ['yes', 'y']):
                     self._user_requesting = []
                     self._opponent = user
@@ -99,9 +96,18 @@ class Game:
                     break
 
                 else:
-                    self._user_requesting.remove(user)
+
+                    for i, user_info in enumerate(self._user_requesting):
+                        user_info = UserSettingsSchema().loads(user_info)
+
+                        if (user_info.private_topic == user.private_topic):
+                            del self._user_requesting[i]
+                            break
 
                     sock.send_str('Declined', user.private_topic)
+
+                    print('Waiting for a user to connect ...')
+
                     break
 
     def _join_game(self):
@@ -114,13 +120,11 @@ class Game:
 
         settings = UserSettingsSchema().dumps(settings)
 
-        print(settings)
+        tkn = input('Token? ')
 
-        sock.send_json(settings)
+        sock.send_json(settings, tkn)
 
         x = sock.recv_str(priv_topic)
-
-        print(x)
 
     def _play_online(self):
         warn('Implement Online')
