@@ -12,7 +12,6 @@ class UserSettingsSchema(Schema):
     # After the schema is
     @post_load
     def make_message(self, data, **__):
-        print(data)
         return UserSettings(**data)
 
 def default_conf():
