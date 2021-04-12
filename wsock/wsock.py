@@ -77,7 +77,9 @@ class Server:
 
         # Set socket to be able to re-use a port/address of an active socket
         # This is important so that if one host turns off, other clients won't turn off
-        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        if os.name != 'nt':
+
+            self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
         # Binds the socket into an address
         self._sock.bind((self._host, self._port))
@@ -135,10 +137,14 @@ class Server:
             else:
                 print(e)
 
-        self._sock.close()
+        # self._sock.close()
 
     def stopExec(self, msg=''):
         ''' Method to shutdown the server if needed '''
+        
+        obj = {
+            
+        }
 
         logging.info(msg if msg != '' else 'Server timed out! No connection established under the timeout given ...')
         print(msg if msg != '' else 'Server timed out! No connection established under the timeout given ...')
@@ -192,11 +198,19 @@ class Server:
                     if (client != c):
 
                         # Send the data to the client
+                        print('wsock_data', data, flush=True)
+                        # msg = Message(
+                        #     content=data,
+                        #     topic='',
+                        #     content_type=
+                        # )
                         client.send(data)
             
             self._check_clients(addr)
 
             exit()
+
+
 
         except Exception as e:
 
@@ -267,6 +281,9 @@ class WSock:
             # Decode it from bytes into string
             data = message.decode()
 
+            print('type', type(data))
+            print('data', data)
+
             # Load it as a dict
             data = json.loads(message)
 
@@ -302,6 +319,8 @@ class WSock:
         )
 
         data = MessageSchema().dumps(message)
+        
+        print('senders data ', data)
 
         sock.send(bytes(data, 'utf-8'))
 

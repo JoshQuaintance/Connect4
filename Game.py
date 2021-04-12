@@ -21,7 +21,9 @@ class ClientInfo:
 class Game:
     def __init__(self):
 
-        self._user_requesting: list[UserSettings] = []
+        self._user_requesting: dict[int, UserSettings] = {
+            
+        }
 
         self._opponent: UserSettings = None
 
@@ -71,14 +73,14 @@ class Game:
         sock.bind(token)
         sock.subscribe(token)
 
-        print('In order for someone to join, they have to use this token below:')
+        print('In order for someone to join, they have to use this token below:\n')
         print(token)
 
         def _get_requests():
             while (True):
                 opponent_info = sock.recv_json()
 
-                self._user_requesting.append(opponent_info)
+                self._user_requesting[opponent_info.private_topic] = opponent_info
 
         t = Thread(target=_get_requests, daemon=True)
 
@@ -86,19 +88,16 @@ class Game:
 
         print('Waiting for a user to connect ...')
         while (True):
-            user_requests = self._user_requesting
-
-            if (len(user_requests) == 0):
+            if (len(self._user_requesting) == 0):
                 continue
 
-            for user in user_requests:
+            for user in self._user_requesting:
 
                 user = UserSettingsSchema().loads(user)
-                # print(user)
                 accept = ''
 
                 while (True):
-                    answer = input(f'The user "" is requesting to join, accept request? ')
+                    answer = input(f'The user "{user.username}" is requesting to join, accept request? ')
 
                     if (answer.lower() not in ['yes', 'y', 'n', 'no']):
                         print('Please answer with a yes or no (y or n)')
@@ -119,11 +118,12 @@ class Game:
                     for i, user_info in enumerate(self._user_requesting):
                         user_info = UserSettingsSchema().loads(user_info)
 
+                        print('USER_INFO\n', user_info.private_topic, '\n', user.private_topic)
                         if (user_info.private_topic == user.private_topic):
+                            sock.send_str('declined', user.private_topic)
                             del self._user_requesting[i]
-                            continue
+                            break
 
-                    sock.send_str('declined', user.private_topic)
 
                     print(f'The user "{user.username}" is declined ...')
                     print('Waiting for a user to connect ...')
@@ -139,6 +139,7 @@ class Game:
         priv_topic = settings.private_topic
 
         settings = UserSettingsSchema().dumps(settings)
+        print('settings: ', settings)
 
         print('In order to join a match, you need to get an alphanumeric token. Ex: a56n1d')
         tkn = input('Input token here: ')
