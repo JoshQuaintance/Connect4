@@ -1,6 +1,6 @@
 
 from init import UserSettings, UserSettingsSchema, get_config
-from InquirerPy import inquirer
+from InquirerPy import inquirer, prompt
 from utils.logs import err, warn
 from wsock.wsock import *
 from threading import Thread
@@ -32,13 +32,25 @@ class Game:
                 'Join a Game': self._join_game
             }
 
-            create_or_join = inquirer.select('Create or Join a Game?', create_or_join_actions).execute()
+            while (True):
 
-            create_or_join_actions[create_or_join]()
+                create_or_join = inquirer.select('Create or Join a Game?', create_or_join_actions).execute()
+
+                response = create_or_join_actions[create_or_join]()
+
+                if (create_or_join == 'Create a New Game'):
+                    break
+                else:
+                    if (response == 'declined'):
+                        continue
+                    elif (response == 'accepted'):
+                        break
+
+                
 
         game_actions = {
             'Play Against a Friend Locally': _play_local_action,
-            'Play Against a Friend Online': self._play_online,
+            # 'Play Against a Friend Online': self._play_online,
             'Play Against a Bot': self._play_bot
         }
 
@@ -58,7 +70,9 @@ class Game:
 
         sock.bind(token)
         sock.subscribe(token)
-        print('Token: ', token)
+
+        print('In order for someone to join, they have to use this token below:')
+        print(token)
 
         def _get_requests():
             while (True):
@@ -80,19 +94,24 @@ class Game:
             for user in user_requests:
 
                 user = UserSettingsSchema().loads(user)
+                # print(user)
+                accept = ''
 
-                accept = inquirer.text(
-                    message=f'The user {user.username} is requesting to join, accept request?',
-                    validate=lambda text: text.lower() in ['yes', 'no', 'n', 'y'],
-                    invalid_message='Please answer with a yes or no'
+                while (True):
+                    answer = input(f'The user "" is requesting to join, accept request? ')
 
-                ).execute()
+                    if (answer.lower() not in ['yes', 'y', 'n', 'no']):
+                        print('Please answer with a yes or no (y or n)')
+                        continue
+                    else:
+                        accept = answer
+                        break
 
                 if (accept.lower() in ['yes', 'y']):
                     self._user_requesting = []
                     self._opponent = user
 
-                    sock.send_str('Accepted', user.private_topic)
+                    sock.send_str('accepted', user.private_topic)
                     break
 
                 else:
@@ -102,13 +121,14 @@ class Game:
 
                         if (user_info.private_topic == user.private_topic):
                             del self._user_requesting[i]
-                            break
+                            continue
 
-                    sock.send_str('Declined', user.private_topic)
+                    sock.send_str('declined', user.private_topic)
 
+                    print(f'The user "{user.username}" is declined ...')
                     print('Waiting for a user to connect ...')
 
-                    break
+                    continue
 
     def _join_game(self):
 
@@ -120,11 +140,19 @@ class Game:
 
         settings = UserSettingsSchema().dumps(settings)
 
-        tkn = input('Token? ')
+        print('In order to join a match, you need to get an alphanumeric token. Ex: a56n1d')
+        tkn = input('Input token here: ')
 
         sock.send_json(settings, tkn)
 
-        x = sock.recv_str(priv_topic)
+        verification = sock.recv_str(priv_topic)
+
+        if (verification == 'declined'):
+            print('Request to join was declined by host ...')
+            return 'declined'
+
+        else:
+            return 'accepted'
 
     def _play_online(self):
         warn('Implement Online')
