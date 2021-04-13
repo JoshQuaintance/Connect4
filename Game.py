@@ -2,9 +2,11 @@
 from init import UserSettings, UserSettingsSchema, get_config
 from InquirerPy import inquirer, prompt
 from utils.logs import err, warn
+from time import sleep
 from wsock.wsock import *
 from threading import Thread
 import uuid
+import sys
 
 
 class ClientInfo:
@@ -21,11 +23,9 @@ class ClientInfo:
 class Game:
     def __init__(self):
 
-        self._user_requesting: dict[int, UserSettings] = {
-            
-        }
+        self._user_requesting: list[UserSettings] = []
 
-        self._opponent: UserSettings = None
+        self._opponent = None
 
         def _play_local_action():
 
@@ -78,57 +78,43 @@ class Game:
 
         def _get_requests():
             while (True):
-                opponent_info = sock.recv_json()
+                opponent_info = vars(sock.recv_json())
 
-                self._user_requesting[opponent_info.private_topic] = opponent_info
+                # req_handler_t = Thread(target=_user_request_handler, args=(opponent_info,), daemon=True)
 
-        t = Thread(target=_get_requests, daemon=True)
+                self._user_requesting.append(opponent_info)
 
-        t.start()
+        Thread(target=_get_requests, daemon=True).start()
 
-        print('Waiting for a user to connect ...')
+        # Add carriage return so we can replace this line
+        print('\rWaiting for a user to connect ...', end='')
         while (True):
             if (len(self._user_requesting) == 0):
                 continue
 
-            for user in self._user_requesting:
+            opponent_info = self._user_requesting[0]
 
-                user = UserSettingsSchema().loads(user)
-                accept = ''
+            user = UserSettingsSchema().load(opponent_info)
 
-                while (True):
-                    answer = input(f'The user "{user.username}" is requesting to join, accept request? ')
+            allow_user = inquirer.text(
+                message=f'\nThe user "{user.username}" is requesting to join, accept request?',
+                validate= lambda text: text.lower() in ['y', 'yes', 'n', 'no'],
+                invalid_message= 'Please answer with a yes or no (y/n)'
+            ).execute()
 
-                    if (answer.lower() not in ['yes', 'y', 'n', 'no']):
-                        print('Please answer with a yes or no (y or n)')
-                        continue
-                    else:
-                        accept = answer
-                        break
+            if (allow_user.lower() in ['yes', 'y']):
 
-                if (accept.lower() in ['yes', 'y']):
-                    self._user_requesting = []
-                    self._opponent = user
+                self._opponent = user
+                sock.send_str('accepted', user.private_topic)
+                break
+            else:
+                sock.send_str('declined', user.private_topic)
 
-                    sock.send_str('accepted', user.private_topic)
-                    break
+                print(f'The user "{user.username}" is declined ...')
+                print('\rWaiting for a user to connect ...', end='')
 
-                else:
-
-                    for i, user_info in enumerate(self._user_requesting):
-                        user_info = UserSettingsSchema().loads(user_info)
-
-                        print('USER_INFO\n', user_info.private_topic, '\n', user.private_topic)
-                        if (user_info.private_topic == user.private_topic):
-                            sock.send_str('declined', user.private_topic)
-                            del self._user_requesting[i]
-                            break
-
-
-                    print(f'The user "{user.username}" is declined ...')
-                    print('Waiting for a user to connect ...')
-
-                    continue
+                del self._user_requesting[0]
+                continue
 
     def _join_game(self):
 
@@ -139,7 +125,6 @@ class Game:
         priv_topic = settings.private_topic
 
         settings = UserSettingsSchema().dumps(settings)
-        print('settings: ', settings)
 
         print('In order to join a match, you need to get an alphanumeric token. Ex: a56n1d')
         tkn = input('Input token here: ')
