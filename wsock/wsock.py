@@ -5,6 +5,8 @@ from marshmallow import Schema, fields, post_load
 from threading import Timer, Lock, Thread
 import os
 import logging
+from types import SimpleNamespace
+
 
 
 class MessageSchema(Schema):
@@ -88,7 +90,7 @@ class Server:
         self._sock.listen()
 
         # Create a thread to start the server
-        t = Thread(target=self._start_server, daemon=False)
+        t = Thread(target=self._start_server, daemon=True)
 
         # Start the thread
         t.start()
@@ -136,8 +138,6 @@ class Server:
                 pass
             else:
                 print(e)
-
-        # self._sock.close()
 
     def stopExec(self, msg=''):
         ''' Method to shutdown the server if needed '''
@@ -198,19 +198,19 @@ class Server:
                     if (client != c):
 
                         # Send the data to the client
-                        print('wsock_data', data, flush=True)
-                        # msg = Message(
-                        #     content=data,
-                        #     topic='',
-                        #     content_type=
-                        # )
                         client.send(data)
             
             self._check_clients(addr)
 
-            exit()
-
-
+            # ! ALKSJFHALKSUFHALIKSFUHLAKSJALUHS... THIS FREAKING ONE LINE! ONE LINE
+            # ! BROKE THE WHOLE CODEBASE.... ONE SINGULAR LINE THAT ONLY HAVE 
+            # ! SIX CHARACTERS THAT REPRESENTS WHAT IT MAKES ME WANT TO DO
+            # ! EXIT THE PROGRAMMING WORLD ASKLJFHASL;KGHLOASHFKIFSGBHIIIIIII
+            # ! I WILL FOREVER REMEMBER THIS SINGULAR LINE OF CODE AND WILL
+            # ! DESPISE THESE 6 CHARACTERS WITH PASSION. I WILL ALWAYS LOOK AT,
+            # ! AND EVERY SINGLE TIME I SEE IT, I WILL ALWAYS TRY TO NOT USE IT
+            # ! ONE LINE!!!!!!!!!!!!
+            # exit()
 
         except Exception as e:
 
@@ -281,8 +281,7 @@ class WSock:
             # Decode it from bytes into string
             data = message.decode()
 
-            print('type', type(data))
-            print('data', data)
+            # print('data',type(data), data)
 
             # Load it as a dict
             data = json.loads(message)
@@ -297,7 +296,7 @@ class WSock:
                 (len(self._topics) == 0)
             ):
                 if ((data.content_type == content_type)):
-                    return json.loads(data.content) if content_type == dict else data.content
+                    return SimpleNamespace(**json.loads(data.content)) if content_type == 'dict' else data.content
 
     def recv_str(self, topic=''):
         return self._recv(topic, 'str')
