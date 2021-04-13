@@ -1,8 +1,14 @@
-from wsock.wsock import Server
+# from wsock.wsock import Server
 
-s = Server(timeout=1)
+# s = Server(timeout=1)
+from time import sleep
+import sys
 
-
+for i in range(20):
+    
+    print(f'\r{str(i)}', end="")
+    sleep(1)
+    sys.stdout.flush()
 
 # from wsock.wsock import WSock
 # from time import sleep
