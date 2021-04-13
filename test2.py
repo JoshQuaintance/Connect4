@@ -1,42 +1,24 @@
-import socket
-import pickle
-import threading
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-# s.bind(('127.0.0.1', 8765))
-
-def hello():
-    while (True):
-        print('hello world')
-    
-    return 'x'
-
-def func():
-    t = threading.Thread(target=hello, daemon=True)
-
-    t.start()
-
-    d = pickle.dumps(t)
-
-    print(d)
-
-    x = pickle.loads(d)
-
-    print(x)
-
-func()
-# s.send()
+from init import UserSettings, UserSettingsSchema, get_config
+from wsock.wsock import WSock, Server
+from threading import Thread
+from InquirerPy import inquirer
 
 
-# from wsock.wsock import WSock
-# from time import sleep
+sock = WSock()
 
-# s = WSock()
+settings = UserSettings(**get_config())
 
-# s.bind('abc')
+priv_topic = settings.private_topic
 
-# s.send_str('hello')
+settings = UserSettingsSchema().dumps(settings)
 
+tkn = input('tkn: ')
 
-# print(s.recv_str())
-# sock.send_str('Hello too')
+sock.send_json(settings, tkn)
+print('sent')
+
+verification = sock.recv_str(priv_topic)
+
+if (verification == 'declined'):
+    print('Request to join was declined by host ...')

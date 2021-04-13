@@ -7,8 +7,6 @@ import os
 import logging
 from types import SimpleNamespace
 
-
-
 class MessageSchema(Schema):
     ''' Message Schema for serializing and deserializing messages between sockets '''
 
@@ -67,8 +65,9 @@ class Server:
     def __init__(self, timeout: int = 0):
 
         # Socket initializations
-        self._clients = []
+        self._clients: list[(socket.socket, socket._RetAddress)] = []
         self._clients_lock = Lock()
+        self._message_queue = []
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._host = '127.0.0.1'
         self._port = 8765
@@ -80,7 +79,6 @@ class Server:
         # Set socket to be able to re-use a port/address of an active socket
         # This is important so that if one host turns off, other clients won't turn off
         if os.name != 'nt':
-
             self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
 
         # Binds the socket into an address
@@ -90,17 +88,42 @@ class Server:
         self._sock.listen()
 
         # Create a thread to start the server
-        t = Thread(target=self._start_server, daemon=True)
+        Thread(target=self._start_server, daemon=True).start()
+        Thread(target=self._sender_handler, daemon=True).start()
 
-        # Start the thread
-        t.start()
+    def _sender_handler(self):
+
+        while (True):
+            if (len(self._message_queue) == 0):
+                continue
+
+            sender_addr, msg = self._message_queue[0]
+
+            print('msg', msg)
+
+            for client, address in self._clients:
+                if (address != sender_addr and client.stillconnected()):
+                    try:
+                        client.sendall(msg)
+
+                    except Exception as e:
+
+                        if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or 
+                        str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'):
+                            self._check_clients(address)
+
+                        else:
+                            print(e)
+
+            del self._message_queue[0]
 
     def _start_server(self):
         ''' Method to start the server '''
 
-        import threading
+        from threading import Timer, Thread
 
         try:
+
             
             # Infinitely loop
             while (True):
@@ -129,7 +152,7 @@ class Server:
                 self._clients.append((c, addr))
 
                 # Start a new thread to handle client messages
-                t = threading.Thread(target=self.clientHandler, args=(c, addr), daemon=True).start()
+                Thread(target=self.clientHandler, args=(c, addr), daemon=True).start()
 
         except OSError as e:
 
@@ -141,10 +164,6 @@ class Server:
 
     def stopExec(self, msg=''):
         ''' Method to shutdown the server if needed '''
-        
-        obj = {
-            
-        }
 
         logging.info(msg if msg != '' else 'Server timed out! No connection established under the timeout given ...')
         print(msg if msg != '' else 'Server timed out! No connection established under the timeout given ...')
@@ -155,7 +174,7 @@ class Server:
     def _check_clients(self, addr):
         ''' Method to check if client exist and to remove if necessary '''
 
-        # Loop through all the clients
+        # Loop through all the clients 
         for client, address in self._clients:
 
             # If the address from the clients list is the same from the given address
@@ -176,8 +195,6 @@ class Server:
         ''' Handles client messages (receives messages and will send it back to other clients, basically a router) '''
 
         logging.info(addr, 'is connected')
-        # print(addr, 'is connected')
-
         try:
 
             # Loop infinitely
@@ -188,29 +205,9 @@ class Server:
 
                 # If the data is empty, then break
                 if not data:
-                    break
+                    continue
 
-
-                # Loop through every client in the list
-                for client, address in self._clients:
-
-                    # If the client is not the same as the client the message is received from
-                    if (client != c):
-
-                        # Send the data to the client
-                        client.send(data)
-            
-            self._check_clients(addr)
-
-            # ! ALKSJFHALKSUFHALIKSFUHLAKSJALUHS... THIS FREAKING ONE LINE! ONE LINE
-            # ! BROKE THE WHOLE CODEBASE.... ONE SINGULAR LINE THAT ONLY HAVE 
-            # ! SIX CHARACTERS THAT REPRESENTS WHAT IT MAKES ME WANT TO DO
-            # ! EXIT THE PROGRAMMING WORLD ASKLJFHASL;KGHLOASHFKIFSGBHIIIIIII
-            # ! I WILL FOREVER REMEMBER THIS SINGULAR LINE OF CODE AND WILL
-            # ! DESPISE THESE 6 CHARACTERS WITH PASSION. I WILL ALWAYS LOOK AT,
-            # ! AND EVERY SINGLE TIME I SEE IT, I WILL ALWAYS TRY TO NOT USE IT
-            # ! ONE LINE!!!!!!!!!!!!
-            # exit()
+                self._message_queue.append((addr, data))
 
         except Exception as e:
 
@@ -281,7 +278,8 @@ class WSock:
             # Decode it from bytes into string
             data = message.decode()
 
-            # print('data',type(data), data)
+            print('recv', data)
+            print()
 
             # Load it as a dict
             data = json.loads(message)
@@ -318,8 +316,6 @@ class WSock:
         )
 
         data = MessageSchema().dumps(message)
-        
-        print('senders data ', data)
 
         sock.send(bytes(data, 'utf-8'))
 

@@ -1,26 +1,58 @@
-# from wsock.wsock import Server
 
-# s = Server(timeout=1)
-from time import sleep
-import sys
+from init import UserSettingsSchema
+from wsock.wsock import WSock, Server
+from threading import Thread
+from InquirerPy import inquirer
+import uuid
 
-for i in range(20):
-    
-    print(f'\r{str(i)}', end="")
-    sleep(1)
-    sys.stdout.flush()
+server = Server(timeout=15)
 
-# from wsock.wsock import WSock
-# from time import sleep
+sock = WSock()
+oponent = None
+clis = []
 
-# s = WSock()
+token = uuid.uuid4().hex[:6]
 
-# # s.send_str({'message': 'hello'})
+sock.bind(token)
+sock.subscribe(token)
 
-# s.subscribe('abc')
+print('In order for someone to join, they have to use this token below:\n')
+print(token)
 
-# print(s.recv_str())
+def _req_handler():
+    while (True):
+        op_info = vars(sock.recv_json())
 
-# s.send_str('close-server')
+        clis.append(op_info)
 
-# print(s.recv_json())
+
+Thread(target=_req_handler, daemon=True).start()
+
+while (True):
+    if (len(clis) == 0):
+        continue
+
+    op_info = clis[0]
+    print(op_info)
+
+    user = UserSettingsSchema().load(op_info)
+
+    allow_user = inquirer.text(
+        message=f'\nThe user "{user.username}" is requesting to join, accept request?',
+        validate= lambda text: text.lower() in ['y', 'yes', 'n', 'no'],
+        invalid_message= 'Please answer with a yes or no (y/n)'
+    ).execute()
+
+    if (allow_user.lower() in ['yes', 'y']):
+
+        oponent = user
+        sock.send_str('accepted', user.private_topic)
+        break
+    else:
+        sock.send_str('declined', user.private_topic)
+
+        print(f'The user "{user.username}" is declined ...')
+        print('\rWaiting for a user to connect ...', end='')
+
+        del clis[0]
+        continue

@@ -78,9 +78,7 @@ class Game:
 
         def _get_requests():
             while (True):
-                opponent_info = vars(sock.recv_json())
-
-                # req_handler_t = Thread(target=_user_request_handler, args=(opponent_info,), daemon=True)
+                opponent_info = vars(sock.recv_json(token))
 
                 self._user_requesting.append(opponent_info)
 
