@@ -5,7 +5,7 @@ because of the ASCII drawing lines, ignore it, because it's getting declared on 
 """
 
 from InquirerPy import inquirer
-from utils.drawingblocks import DrawingBlocks
+from utils.drawingblocks import *
 from os import name, system
 from utils.logs import err, warn
 from Game import Game
@@ -13,12 +13,7 @@ from Game import Game
 # ? THIS DECLARATIONS ARE BASICALL USELESS TO REMOVE WARNINGS
 # ? It can also be used as a list of all the ASCII drawing
 # ? Blocks used in this file
-HORIZONTAL_LINE = None
-VERTICAL_LINE = None
-TOP_LEFT_CORNER = None
-TOP_RIGHT_CORNER = None
-BOTTOM_LEFT_CORNER = None
-BOTTOM_RIGHT_CORNER = None
+
 
 
 # Dynamically declares all the drawing blocks variables
