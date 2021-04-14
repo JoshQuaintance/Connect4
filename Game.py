@@ -48,8 +48,6 @@ class Game:
                     elif (response == 'accepted'):
                         break
 
-                
-
         game_actions = {
             'Play Against a Friend Locally': _play_local_action,
             # 'Play Against a Friend Online': self._play_online,
@@ -63,12 +61,12 @@ class Game:
 
     def _create_game(self):
 
-        # Start server with a timeout of 15 seconds
-        server = Server(timeout=15)
+        token = uuid.uuid4().hex[:6]
+
+        # Start server
+        server = Server()
 
         sock = WSock()
-
-        token = uuid.uuid4().hex[:6]
 
         sock.bind(token)
         sock.subscribe(token)
@@ -80,6 +78,7 @@ class Game:
             while (True):
                 opponent_info = vars(sock.recv_json(token))
 
+                print(opponent_info)
                 self._user_requesting.append(opponent_info)
 
         Thread(target=_get_requests, daemon=True).start()
@@ -96,8 +95,8 @@ class Game:
 
             allow_user = inquirer.text(
                 message=f'\nThe user "{user.username}" is requesting to join, accept request?',
-                validate= lambda text: text.lower() in ['y', 'yes', 'n', 'no'],
-                invalid_message= 'Please answer with a yes or no (y/n)'
+                validate=lambda text: text.lower() in ['y', 'yes', 'n', 'no'],
+                invalid_message='Please answer with a yes or no (y/n)'
             ).execute()
 
             if (allow_user.lower() in ['yes', 'y']):
@@ -116,16 +115,42 @@ class Game:
 
     def _join_game(self):
 
+        tkn_validator_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        tkn_validator_sock.connect(('127.0.0.1', 8766))
+
         sock = WSock()
 
         settings = UserSettings(**get_config())
 
         priv_topic = settings.private_topic
 
+        sock.subscribe(priv_topic)
+
         settings = UserSettingsSchema().dumps(settings)
 
         print('In order to join a match, you need to get an alphanumeric token. Ex: a56n1d')
-        tkn = input('Input token here: ')
+
+        while (True):
+
+            tkn = inquirer.text(
+                message='Input token here:',
+                validate=lambda text: len(text) == 6 and text.isalnum(),
+                invalid_message='Please enter a valid 6 character, alphanumeric token... '
+            ).execute()
+
+            msg = json.dumps({'action': 'validate_token', 'topic': tkn})
+
+            tkn_validator_sock.send(bytes(msg, 'utf-8'))
+
+            print('tkn', tkn)
+            topic_exist = tkn_validator_sock.recv()
+
+            print('after')
+
+            if (topic_exist == 'topic non-existent'):
+                print(f'The token "{tkn}" does not have a server attached to it. Please enter a valid token!')
+            else:
+                break
 
         sock.send_json(settings, tkn)
 

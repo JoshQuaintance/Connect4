@@ -9,5 +9,5 @@ websockets
 [end]
 
 [user_conf]
-{"username": "Josh", "default_server_name": "Serv", "live_reload": true}
+{"username": "Joshua", "default_server_name": "Serv", "live_reload": true}
 [end]

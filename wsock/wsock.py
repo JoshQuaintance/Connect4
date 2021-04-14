@@ -60,9 +60,94 @@ class Message:
 
             return self.content
 
+class StoreServer:
+    def __init__(self):
+        self._store_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        self._store_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        if (os.name != 'nt'):
+            self._store_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+
+        self._store_server.bind(('127.0.0.1', 8766))
+        print('store start')
+        self._store_server.listen()
+        
+        self._servers_active = []
+        self._clients_conn = []
+
+        Thread(target=self._client_handler, daemon=True).start()
+        Thread(target=self._token_validator, daemon=True).start()
+
+    def _client_handler(self):
+        while (True):
+            sock = self._store_server
+
+            c, addr = sock.accept()
+
+            print('client_handler', addr)
+            self._clients_conn.append((c, addr))
+
+    def _token_validator(self):
+        while (True):
+            if (len(self._clients_conn) == 0):
+                continue
+
+            client, addr = self._clients_conn[0]
+
+            try:
+
+                data = client.recv(1024)
+
+                print('data', addr)
+
+                if not data: continue
+
+                data = data.decode()
+
+                # Load it as a dict
+                data = json.loads(data)
+
+                # Deserialize it using marshmallow
+                data = MessageSchema().load(data)
+                
+                content = json.loads(data.content)
+
+                if (content['action'] == 'new_server'):
+                    self._servers_active.append(content['topic'])
+                    continue
+
+                if (content['topic'] not in self._servers_active):
+                    msg = Message(
+                        content='topic non-existent',
+                        content_type='str',
+                        topic=''
+                    )
+                    client.sendall(msg)
+                
+                else:
+                    msg = Message(
+                        content='topic exist',
+                        content_type='str',
+                        topic=''
+                    )
+
+                    client.sendall(msg)
+
+                del self._clients_conn[0]
+
+            except Exception as e:
+                if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or 
+                    str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'
+                ):
+
+                    del self._clients_conn[0]
+                else:
+                    print(e)
+
 
 class Server:
-    def __init__(self, timeout: int = 0):
+    def __init__(self, timeout: int = 0, server_token = ''):
 
         # Socket initializations
         self._clients: list[(socket.socket, socket._RetAddress)] = []
@@ -90,6 +175,26 @@ class Server:
         # Create a thread to start the server
         Thread(target=self._start_server, daemon=True).start()
         Thread(target=self._sender_handler, daemon=True).start()
+        
+        token_validator = StoreServer()
+
+        tkn_check = {
+            'action': 'new_server',
+            'topic': server_token
+        }
+
+        # msg = Message(
+        #     content=json.dumps(tkn_check),
+        #     content_type='str',
+        #     topic=''
+        # )
+
+        # data = MessageSchema().dumps(msg)
+
+        validate_tkn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        validate_tkn.connect(('127.0.0.1', 8766))
+        validate_tkn.send(bytes(json.dumps(tkn_check), 'utf-8'))
+
 
     def _sender_handler(self):
 
@@ -99,10 +204,8 @@ class Server:
 
             sender_addr, msg = self._message_queue[0]
 
-            print('msg', msg)
-
             for client, address in self._clients:
-                if (address != sender_addr and client.stillconnected()):
+                if (address != sender_addr):
                     try:
                         client.sendall(msg)
 
@@ -211,7 +314,8 @@ class Server:
 
         except Exception as e:
 
-            if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host'):
+            if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or
+            str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'):
                 self._check_clients(addr)
 
             else:
@@ -221,13 +325,13 @@ class Server:
 class WSock:
     ''' Websocket implementation that have Publisher and Subscribers as it's main target '''
 
-    def __init__(self):
+    def __init__(self, port=8765):
 
         # Create a unique socket name
         self.sock_name = f'Sock-{uuid.uuid4().hex[:4]}'
 
         # Socket init
-        self._port = 8765
+        self._port = port
 
         self._sock = socket.socket()
         self._sock.connect(('127.0.0.1', 8765))
@@ -278,11 +382,8 @@ class WSock:
             # Decode it from bytes into string
             data = message.decode()
 
-            print('recv', data)
-            print()
-
             # Load it as a dict
-            data = json.loads(message)
+            data = json.loads(data)
 
             # Deserialize it using marshmallow
             data = MessageSchema().load(data)
