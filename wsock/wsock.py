@@ -1,11 +1,13 @@
 import socket
 import json
+from time import sleep
 import uuid
 from marshmallow import Schema, fields, post_load
 from threading import Timer, Lock, Thread
 import os
 import logging
 from types import SimpleNamespace
+
 
 class MessageSchema(Schema):
     ''' Message Schema for serializing and deserializing messages between sockets '''
@@ -22,9 +24,10 @@ class MessageSchema(Schema):
     # After the schema is loaded (MessageSchema().loads(dict))
     @post_load
     def make_message(self, data, **__):
-        # It will pass all it's data into the Message object to 
+        # It will pass all it's data into the Message object to
         # make it a Message object again
         return Message(**data)()
+
 
 class Message:
     ''' Message class that will be used to send messages between connections with '''
@@ -60,94 +63,127 @@ class Message:
 
             return self.content
 
+
 class StoreServer:
     def __init__(self):
-        self._store_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        self._store_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
-        if (os.name != 'nt'):
-            self._store_server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-
-        self._store_server.bind(('127.0.0.1', 8766))
-        print('store start')
-        self._store_server.listen()
-        
+        self._sock = WSock(8766)
         self._servers_active = []
         self._clients_conn = []
+        self._validation_queue = []
 
         Thread(target=self._client_handler, daemon=True).start()
         Thread(target=self._token_validator, daemon=True).start()
 
     def _client_handler(self):
         while (True):
-            sock = self._store_server
+            sock = self._sock
 
-            c, addr = sock.accept()
+            data = sock.recv_json()
 
-            print('client_handler', addr)
-            self._clients_conn.append((c, addr))
+            if (data.action == 'new-server'):
+                self._servers_active.append(data.topic)
+
+            elif (data.action == 'validate-token'):
+                queue = {
+                    'token': data.topic,
+                    'private_token': data.private_token
+                }
+
+                self._validation_queue.append(queue)
 
     def _token_validator(self):
-        while (True):
-            if (len(self._clients_conn) == 0):
+        while True:
+            if (len(self._validation_queue) == 0):
                 continue
 
-            client, addr = self._clients_conn[0]
+            token = self._validation_queue[0]
+            private_token = token['private_token']
+            token = token['token']
 
-            try:
+            available_tokens = self._servers_active            
+            sock = self._sock
 
-                data = client.recv(1024)
+            if (token not in available_tokens):
+                message = {
+                    'response': 'token-non-existent',
+                    'private_token': private_token
+                }
 
-                print('data', addr)
+                sock.send_json(message)
 
-                if not data: continue
+            if (token in available_tokens):
+                message = {
+                    'response': 'token-exist',
+                    'private_token': private_token
+                }
 
-                data = data.decode()
+                sock.send_json(message)
 
-                # Load it as a dict
-                data = json.loads(data)
+            del self._validation_queue[0] 
 
-                # Deserialize it using marshmallow
-                data = MessageSchema().load(data)
-                
-                content = json.loads(data.content)
 
-                if (content['action'] == 'new_server'):
-                    self._servers_active.append(content['topic'])
-                    continue
+    # def _client_handler(self):
+    #     while (True):
+    #         sock = self._store_server
 
-                if (content['topic'] not in self._servers_active):
-                    msg = Message(
-                        content='topic non-existent',
-                        content_type='str',
-                        topic=''
-                    )
-                    client.sendall(msg)
-                
-                else:
-                    msg = Message(
-                        content='topic exist',
-                        content_type='str',
-                        topic=''
-                    )
+    #         c, addr = sock.accept()
 
-                    client.sendall(msg)
+    #         print('c_handler', addr)
+    #         self._clients_conn.append((c, addr))
 
-                del self._clients_conn[0]
+    # def _token_validator(self):
+    #     while (True):
+    #         if (len(self._clients_conn) == 0):
+    #             continue
 
-            except Exception as e:
-                if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or 
-                    str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'
-                ):
+    #         client, addr = self._clients_conn[0]
 
-                    del self._clients_conn[0]
-                else:
-                    print(e)
+    #         try:
+
+    #             data = client.recv(1024)
+
+    #             print('data', data)
+
+    #             if not data:
+    #                 break
+
+    #             data = data.decode()
+
+    #             # Load it as a dict
+    #             data = json.loads(data)
+
+    #             print('data', data, flush=True)
+
+    #             if (data['action'] == 'new_server'):
+    #                 self._servers_active.append(data['topic'])
+    #                 continue
+
+    #             if (data['topic'] not in self._servers_active):
+    #                 msg = json.dumps({'message': 'topic-non-existent', 'priv_tkn': data['priv_tkn']})
+
+    #                 client.send(bytes(msg, 'utf-8'))
+
+    #             else:
+    #                 msg = json.dumps({'message': 'topic-exist', 'priv_tkn': data['priv_tkn']})
+
+    #                 client.send(bytes(msg, 'utf-8'))
+
+    #             del self._clients_conn[0]
+
+    #         except Exception as e:
+    #             if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or
+    #                     str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'
+    #                     ):
+
+    #                 del self._clients_conn[0]
+    #             else:
+    #                 print(e)
+
+    #     del self._clients_conn[0]
 
 
 class Server:
-    def __init__(self, timeout: int = 0, server_token = ''):
+    def __init__(self, timeout: int = 0, server_token=''):
 
         # Socket initializations
         self._clients: list[(socket.socket, socket._RetAddress)] = []
@@ -175,26 +211,17 @@ class Server:
         # Create a thread to start the server
         Thread(target=self._start_server, daemon=True).start()
         Thread(target=self._sender_handler, daemon=True).start()
-        
+
         token_validator = StoreServer()
 
-        tkn_check = {
-            'action': 'new_server',
+        tkn_check = json.dumps({
+            'action': 'new-server',
             'topic': server_token
-        }
+        })
 
-        # msg = Message(
-        #     content=json.dumps(tkn_check),
-        #     content_type='str',
-        #     topic=''
-        # )
+        self._store_sock = WSock(8766)
 
-        # data = MessageSchema().dumps(msg)
-
-        validate_tkn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        validate_tkn.connect(('127.0.0.1', 8766))
-        validate_tkn.send(bytes(json.dumps(tkn_check), 'utf-8'))
-
+        self._store_sock.send_json(tkn_check)
 
     def _sender_handler(self):
 
@@ -211,8 +238,8 @@ class Server:
 
                     except Exception as e:
 
-                        if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or 
-                        str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'):
+                        if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or
+                                str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'):
                             self._check_clients(address)
 
                         else:
@@ -227,12 +254,11 @@ class Server:
 
         try:
 
-            
             # Infinitely loop
             while (True):
 
                 # If there is a timeout, and the there is no clients connected
-                # If the cancel didn't run (meaning nobody connected within the timeout time), 
+                # If the cancel didn't run (meaning nobody connected within the timeout time),
                 # then it will stop the server
                 if (self._socket_timeout != 0 and len(self._clients) == 0):
 
@@ -277,7 +303,7 @@ class Server:
     def _check_clients(self, addr):
         ''' Method to check if client exist and to remove if necessary '''
 
-        # Loop through all the clients 
+        # Loop through all the clients
         for client, address in self._clients:
 
             # If the address from the clients list is the same from the given address
@@ -285,7 +311,7 @@ class Server:
 
                 # Remove the client from the clients list
                 self._clients.remove((client, address))
-    
+
                 break
 
         # If the clients list is empty
@@ -315,7 +341,7 @@ class Server:
         except Exception as e:
 
             if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or
-            str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'):
+                    str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'):
                 self._check_clients(addr)
 
             else:
@@ -325,13 +351,13 @@ class Server:
 class WSock:
     ''' Websocket implementation that have Publisher and Subscribers as it's main target '''
 
-    def __init__(self, port=8765):
+    def __init__(self, port=None):
 
         # Create a unique socket name
         self.sock_name = f'Sock-{uuid.uuid4().hex[:4]}'
 
         # Socket init
-        self._port = port
+        self._port = port if port != None else 8765
 
         self._sock = socket.socket()
         self._sock.connect(('127.0.0.1', 8765))
@@ -382,16 +408,28 @@ class WSock:
             # Decode it from bytes into string
             data = message.decode()
 
+            print()
+
+            print('recv_data', data)
+            sleep(1)
+
             # Load it as a dict
             data = json.loads(data)
 
+            print()
+            print('loaded_data', type(data), data)
+            sleep(1)
+            
             # Deserialize it using marshmallow
             data = MessageSchema().load(data)
 
-            
+            print()
+            print('yes', type(data.content), data.content)
+            sleep(1)
+
             if (
-                (topic != '' and data.topic == topic) or 
-                (data.topic in self._topics and len(self._topics) > 0) or 
+                (topic != '' and data.topic == topic) or
+                (data.topic in self._topics and len(self._topics) > 0) or
                 (len(self._topics) == 0)
             ):
                 if ((data.content_type == content_type)):
@@ -424,4 +462,8 @@ class WSock:
         self._send(msg, topic, 'str')
 
     def send_json(self, msg, topic=''):
+        # if (type(msg) == SimpleNamespace()):
+        #     msg = vars(SimpleNamespace)
+
         self._send(json.dumps(msg), topic, 'dict')
+

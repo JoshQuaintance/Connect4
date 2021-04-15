@@ -64,7 +64,7 @@ class Game:
         token = uuid.uuid4().hex[:6]
 
         # Start server
-        server = Server()
+        server = Server(server_token=token)
 
         sock = WSock()
 
@@ -115,9 +115,7 @@ class Game:
 
     def _join_game(self):
 
-        tkn_validator_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        tkn_validator_sock.connect(('127.0.0.1', 8766))
-
+        token_validator_sock = WSock(8766)
         sock = WSock()
 
         settings = UserSettings(**get_config())
@@ -138,16 +136,27 @@ class Game:
                 invalid_message='Please enter a valid 6 character, alphanumeric token... '
             ).execute()
 
-            msg = json.dumps({'action': 'validate_token', 'topic': tkn})
+            message = json.dumps({
+                'action': 'validate-token', 
+                'topic': tkn,
+                'private_token': priv_topic
+            })
 
-            tkn_validator_sock.send(bytes(msg, 'utf-8'))
+            token_validator_sock.send_json(message)
 
-            print('tkn', tkn)
-            topic_exist = tkn_validator_sock.recv()
+            topic_exist = ''
 
-            print('after')
+            while (True):
+                print('while')
 
-            if (topic_exist == 'topic non-existent'):
+                topic_exist = token_validator_sock.recv_json(priv_topic)
+
+                if (topic_exist.private_token == priv_topic):
+
+                    topic_exist = topic_exist.response
+                    break
+
+            if (topic_exist == 'topic-non-existent'):
                 print(f'The token "{tkn}" does not have a server attached to it. Please enter a valid token!')
             else:
                 break
