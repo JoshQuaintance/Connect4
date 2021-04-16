@@ -66,22 +66,78 @@ class Message:
 
 class StoreServer:
     def __init__(self):
-        self._sock = WSock(8766)
-        self._servers_active = []
-        self._clients_conn = []
+        # self._sock = WSock(8766)
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        self._store_server_name = 'Store-Sock-' + str(uuid.uuid4().hex[:4])
+
+        self._sock.bind(('127.0.0.1', 8766))
+        self._sock.listen()
+
+        self._servers_active: set = set()
         self._validation_queue = []
 
-        Thread(target=self._client_handler, daemon=True).start()
-        Thread(target=self._token_validator, daemon=True).start()
+
+        self._sync_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sync_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._sync_sock.bind(('127.0.0.1', 8767))
+        self._sync_sock.listen()
+
+        Thread(target=self._server_sync, daemon=True).start()
+
+
+        Thread(target=self._client_handler, daemon=True, name='StoreServer._client_handler()').start()
+        Thread(target=self._token_validator, daemon=True, name='StoreServer._token_handler()').start()
+
+        Thread(target=self.tt, daemon=True).start()
+
+    def tt(self):
+        while (True):
+            print(self._servers_active)
+            sleep(5)
+
+    def _server_sync(self):
+        while (True):
+            sock = self._sync_sock
+            
+            c, addr = sock.accept()
+
+            data = c.recv(1024).decode()
+
+            data = json.loads(data)
+
+            self._servers_active = self._servers_active.union(set(data['servers']))
 
     def _client_handler(self):
         while (True):
             sock = self._sock
 
-            data = sock.recv_json()
+            c, addr = sock.accept()
+            
+            data = c.recv(1024).decode()
+
+            data = MessageSchema().loads(data)
+
+            print(type(data.content), data.content)
+            
+            data = SimpleNamespace(**json.loads(data.content))
+
+            print(data.action)
+
+            if (data.action == 'update-server-list'):
+                self._servers_active = self._servers_active.union(set(data.servers))
 
             if (data.action == 'new-server'):
-                self._servers_active.append(data.topic)
+                self._servers_active.add(data.topic)
+
+                message = json.dumps({
+                    'action': 'update-server-list',
+                    'servers': list(self._servers_active)
+                })
+
+                self._sync_sock.connect(('127.0.0.1', 8767))
+                self._sync_sock.send(bytes(message, 'utf-8'))
 
             elif (data.action == 'validate-token'):
                 queue = {
@@ -92,7 +148,7 @@ class StoreServer:
                 self._validation_queue.append(queue)
 
     def _token_validator(self):
-        while True:
+        while (True):
             if (len(self._validation_queue) == 0):
                 continue
 
@@ -100,86 +156,38 @@ class StoreServer:
             private_token = token['private_token']
             token = token['token']
 
-            available_tokens = self._servers_active            
+            available_tokens = self._servers_active
             sock = self._sock
 
             if (token not in available_tokens):
-                message = {
-                    'response': 'token-non-existent',
-                    'private_token': private_token
-                }
+                message = Message(
+                    content=json.dumps({
+                        'response': 'token-non-existent',
+                        'private_token': private_token
+                    }),
+                    content_type='dict',
+                    topic=''
+                )
+
+                message = bytes(MessageSchema().dumps(message), 'utf-8')
 
                 sock.send_json(message)
 
             if (token in available_tokens):
-                message = {
-                    'response': 'token-exist',
-                    'private_token': private_token
-                }
+                message = Message(
+                    content=json.dumps({
+                        'response': 'token-exist',
+                        'private_token': private_token
+                    }),
+                    content_type='dict',
+                    topic=''
+                )
+
+                message = bytes(MessageSchema().dumps(message), 'utf-8')
 
                 sock.send_json(message)
 
-            del self._validation_queue[0] 
-
-
-    # def _client_handler(self):
-    #     while (True):
-    #         sock = self._store_server
-
-    #         c, addr = sock.accept()
-
-    #         print('c_handler', addr)
-    #         self._clients_conn.append((c, addr))
-
-    # def _token_validator(self):
-    #     while (True):
-    #         if (len(self._clients_conn) == 0):
-    #             continue
-
-    #         client, addr = self._clients_conn[0]
-
-    #         try:
-
-    #             data = client.recv(1024)
-
-    #             print('data', data)
-
-    #             if not data:
-    #                 break
-
-    #             data = data.decode()
-
-    #             # Load it as a dict
-    #             data = json.loads(data)
-
-    #             print('data', data, flush=True)
-
-    #             if (data['action'] == 'new_server'):
-    #                 self._servers_active.append(data['topic'])
-    #                 continue
-
-    #             if (data['topic'] not in self._servers_active):
-    #                 msg = json.dumps({'message': 'topic-non-existent', 'priv_tkn': data['priv_tkn']})
-
-    #                 client.send(bytes(msg, 'utf-8'))
-
-    #             else:
-    #                 msg = json.dumps({'message': 'topic-exist', 'priv_tkn': data['priv_tkn']})
-
-    #                 client.send(bytes(msg, 'utf-8'))
-
-    #             del self._clients_conn[0]
-
-    #         except Exception as e:
-    #             if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host' or
-    #                     str(e) == '[WinError 10053] An established connection was aborted by the software in your host machine'
-    #                     ):
-
-    #                 del self._clients_conn[0]
-    #             else:
-    #                 print(e)
-
-    #     del self._clients_conn[0]
+            del self._validation_queue[0]
 
 
 class Server:
@@ -214,14 +222,22 @@ class Server:
 
         token_validator = StoreServer()
 
-        tkn_check = json.dumps({
-            'action': 'new-server',
-            'topic': server_token
-        })
+        tkn_check = Message(
+            content=json.dumps({
+                'action': 'new-server',
+                'topic': server_token
+            }),
+            topic='',
+            content_type='dict'
+        )
 
-        self._store_sock = WSock(8766)
+        tkn_check = MessageSchema().dumps(tkn_check)
 
-        self._store_sock.send_json(tkn_check)
+        store_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        store_sock.connect(('127.0.0.1', 8766))
+
+        store_sock.send(bytes(tkn_check, 'utf-8'))
+
 
     def _sender_handler(self):
 
@@ -360,10 +376,13 @@ class WSock:
         self._port = port if port != None else 8765
 
         self._sock = socket.socket()
-        self._sock.connect(('127.0.0.1', 8765))
+        self._sock.connect(('127.0.0.1', self._port))
 
         self._topics = []
         self._binded_topic = ''
+
+    def getSock(self):
+        return self._sock
 
     '''
      * Actions
@@ -408,24 +427,11 @@ class WSock:
             # Decode it from bytes into string
             data = message.decode()
 
-            print()
-
-            print('recv_data', data)
-            sleep(1)
-
             # Load it as a dict
             data = json.loads(data)
 
-            print()
-            print('loaded_data', type(data), data)
-            sleep(1)
-            
             # Deserialize it using marshmallow
             data = MessageSchema().load(data)
-
-            print()
-            print('yes', type(data.content), data.content)
-            sleep(1)
 
             if (
                 (topic != '' and data.topic == topic) or
@@ -466,4 +472,3 @@ class WSock:
         #     msg = vars(SimpleNamespace)
 
         self._send(json.dumps(msg), topic, 'dict')
-

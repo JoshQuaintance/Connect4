@@ -76,12 +76,16 @@ class Game:
 
         def _get_requests():
             while (True):
-                opponent_info = vars(sock.recv_json(token))
+                try:
 
-                print(opponent_info)
+                    opponent_info = vars(sock.recv_json(token))
+                except ConnectionResetError as e:
+                    if (str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host'):
+                        continue
+
                 self._user_requesting.append(opponent_info)
 
-        Thread(target=_get_requests, daemon=True).start()
+        Thread(target=_get_requests, daemon=True, name='Game._create_game._get_requests()').start()
 
         # Add carriage return so we can replace this line
         print('\rWaiting for a user to connect ...', end='')
@@ -137,17 +141,16 @@ class Game:
             ).execute()
 
             message = json.dumps({
-                'action': 'validate-token', 
-                'topic': tkn,
-                'private_token': priv_topic
-            })
+                    'action': 'validate-token',
+                    'topic': tkn,
+                    'private_token': priv_topic
+                })
 
             token_validator_sock.send_json(message)
 
             topic_exist = ''
 
             while (True):
-                print('while')
 
                 topic_exist = token_validator_sock.recv_json(priv_topic)
 
@@ -170,6 +173,7 @@ class Game:
             return 'declined'
 
         else:
+
             return 'accepted'
 
     def _play_online(self):
