@@ -1,6 +1,6 @@
 
 from init import UserSettings, UserSettingsSchema, get_config
-from wsock.wsock import WSock, Server
+from wsock.wsock_old import WSock, Server
 from threading import Thread
 from InquirerPy import inquirer
 
