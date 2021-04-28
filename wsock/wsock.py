@@ -1,9 +1,10 @@
 import socket
 import json
+
 from marshmallow import Schema, fields, post_load
 import os
 from threading import Thread
-import functools
+from utils.getcontrols import getcontrols
 
 
 class MessageSchema(Schema):
@@ -51,6 +52,8 @@ class Server:
     def __init__(self):
 
         self._clients = []
+        self._clients_playing = []
+        self._clients_spectating = []
         self._clients_info = {}
         self._message_queue = []
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -85,8 +88,21 @@ class Server:
 
         self._sock.listen()
 
-        Thread(target=self._start_server, daemon=True).start()
-        Thread(target=self._message_sender, daemon=True).start()
+        Thread(target=self._start_server, daemon=True, name='WSock._start_server').start()
+        Thread(target=self._message_sender, daemon=True, name='WSock._message_sender').start()
+
+        def _track_keys():
+            while True:
+                try:
+                    key = getcontrols()
+
+                except SystemExit as key_e:
+                    print('Exiting ...')
+                    os._exit(0)
+
+        Thread(target=_track_keys, daemon=True, name='_track_keys').start()
+
+        self.port = self._port
 
     def _start_server(self):
         """ Starts the server """
@@ -100,7 +116,7 @@ class Server:
 
             self._clients.append((c, addr))
 
-            Thread(target=self._client_handler, args=(c, addr), daemon=True).start()
+            Thread(target=self._client_handler, args=(c, addr), daemon=True, name='WSock._client_handler').start()
 
     def _client_handler(self, c, addr):
         """ Handles clients receiving and sending data """
@@ -118,15 +134,28 @@ class Server:
                 if 'sock_conn_init' in data:
                     parsed = json.loads(data)
 
-                    if parsed['intent'] == 'join' and self._config['status'] != 'looking':
-                        c.send(bytes('no joining', 'utf-8'))
+                    if parsed['intent'] == 'join':
+                        if self._config['status'] != 'looking':
+                            c.send(bytes('no-joining', 'utf-8'))
 
-                        self._clear_client(addr)
-                        exit(0)
+                            self._clear_client(addr)
+                            exit(0)
 
-                    parsed_info = json.loads(parsed['client_info'])
+                    parsed_info = parsed['user_conf']
 
-                    self._clients_info[addr] = parsed_info
+                    parsed_info['action'] = 'playing'
+
+                    host, port = addr
+                    self._clients_info[str(port)] = parsed_info
+                    self._clients_playing.append(addr)
+
+                    amount_playing = 0
+                    for key, val in self._clients_info.items():
+                        if val['action'] == 'playing':
+                            amount_playing += 1
+
+                    if amount_playing >= 2:
+                        self._config['status'] = 'playing'
 
                     continue
 
@@ -135,8 +164,9 @@ class Server:
 
                 self._message_queue.append((addr, data))
 
-        except Exception as e:
-            raise e
+        except ConnectionResetError as e:
+            if str(e) == '[WinError 10054] An existing connection was forcibly closed by the remote host':
+                self._clear_client(addr)
 
     def _message_sender(self):
 
@@ -163,17 +193,19 @@ class Server:
 
             if address == addr:
                 self._clients.remove((client, address))
+                self._clients_playing.pop((client, address))
 
                 break
 
-        self._clients_info.pop(addr, None)
+        host, port = addr
+        self._clients_info.pop(str(port), None)
 
 
 class WSock:
 
     def __init__(self, user_conf, intent, port=None):
 
-        self._port = port if port is not None else 8765
+        self._port = port if port is not None else 8665
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.connect(('127.0.0.1', self._port))
@@ -181,50 +213,54 @@ class WSock:
 
         init_message = {
             'sock_conn_init': True,
-            'user_conf'     : user_conf,
-            'intent'        : intent
+            'user_conf': user_conf,
+            'intent': intent
         }
 
+        # def _track_keys():
+        #     while True:
+        #         try:
+        #             key = getcontrols()
+        #
+        #         except SystemExit as key_e:
+        #             print('Exiting ...')
+        #             os._exit(0)
+        #
+        # Thread(target=_track_keys, daemon=True, name='_track_keys').start()
+
+        print('sent')
         self._sock.send(bytes(json.dumps(init_message), 'utf-8'))
 
-        response = self._sock.recv(1024)
+        print('recv')
+        response = self._sock.recv(1024).decode()
 
-        if response == 'no joining':
-            raise Exception('Cannot Join, Server Started')
+        print(response)
+
+        if response == 'no-joining':
+            raise Exception('Cannot Join, Game Started')
 
     def _recv(self, content_type):
         """ Takes care of the message receiving """
 
-        def inner(func):
+        while True:
+            sock = self._sock
 
-            @functools.wraps(func)
-            def wrapper():
-                while True:
-                    sock = self._sock
+            message = sock.recv(1024)
 
-                    message = sock.recv(1024)
+            data = message.decode()
 
-                    data = message.decode()
+            data = json.loads(data)
 
-                    data = json.loads(data)
+            data = MessageSchema().load(data)
 
-                    data = MessageSchema().load(data)
+            if data.content_type == content_type:
+                return json.loads(data.content) if content_type == 'dict' else data.content
 
-                    if data.content_type == content_type:
-                        value = func(json.loads(data.content) if content_type == 'dict' else data.content)
-                        return value
+    def recv_str(self):
+        return self._recv('str')
 
-            return wrapper
-
-        return inner
-
-    @_recv('str')
-    def recv_str(self, message):
-        return message
-
-    @_recv('dict')
-    def recv_json(self, message):
-        return message
+    def recv_json(self):
+        return self._recv('dict')
 
     def _send(self, message, content_type):
 

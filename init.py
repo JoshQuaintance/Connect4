@@ -3,6 +3,7 @@ import json
 import uuid
 from marshmallow import Schema, fields, post_load
 
+
 class UserSettingsSchema(Schema):
     username = fields.Str()
     default_server_namej = fields.Str()
@@ -13,6 +14,7 @@ class UserSettingsSchema(Schema):
     @post_load
     def make_message(self, data, **__):
         return UserSettings(**data)
+
 
 def default_conf():
     conf_content_warning = f'# DO NOT MODIFY THIS FILE UNLESS YOU KNOW WHAT YOU ARE DOING!'
@@ -35,25 +37,24 @@ def default_conf():
 
 
 def get_config():
-        conf_file = open('config.toml')
+    conf_file = open('config.toml')
 
-        conf = conf_file.read()
-        conf = conf.split('\n')
+    conf = conf_file.read()
+    conf = conf.split('\n')
 
-        conf_start = conf.index('[user_conf]')
+    conf_start = conf.index('[user_conf]')
 
-        conf = conf[conf_start + 1]
+    conf = conf[conf_start + 1]
 
-        conf = json.loads(conf)
+    conf = json.loads(conf)
 
-        # print(UserSettingsSchema().dumps((UserSettings(**conf))))
+    # print(UserSettingsSchema().dumps((UserSettings(**conf))))
 
-        return conf
+    return conf
+
 
 class UserSettings:
     def __init__(self, username='', live_reload: bool = True, default_server_name='', private_topic=''):
-
-
         self.username = username
 
         self.default_server_name = default_server_name
@@ -61,7 +62,6 @@ class UserSettings:
         self.live_reload = live_reload
 
         self.private_topic = private_topic if private_topic != '' else uuid.uuid4().hex[:8]
-
 
 
 def init():
@@ -80,7 +80,6 @@ def init():
         print('Config file exist, continueing ...')
 
         UserSettings()
-
 
 # if __name__ == '__main__':
 #     get_config()

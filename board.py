@@ -141,7 +141,7 @@ class Board:
         self.message = ' ' * (len(self.message) + 2)
 
         # if the highest is bigger than 5, means column is full
-        if (highest_on_column > 5):
+        if highest_on_column > 5:
             # Change the message that will be printed
             self.message = f'Column {col} is Full! Select a different column'
 
@@ -174,7 +174,7 @@ class Board:
             self.check_win()
 
         # If the moves are even number
-        if (self.moves % 2 == 0):
+        if self.moves % 2 == 0:
 
             # Increment the rounds, because
             # both players have moved
@@ -192,7 +192,7 @@ class Board:
         # Adds the current color that is going to played on the top of the
         # column currently highlighted. It uses math that I really
         # do not feel like explaining it right now
-        board_str.append([' ' * (2) + ' ' * (4 * (self.highlighted - 1)) +
+        board_str.append([' ' * 2 + ' ' * (4 * (self.highlighted - 1)) +
                           colored('O', 'red' if self.turn == 1 else 'blue') + ' ' * 18])
 
         # Adds the top line to the array
@@ -201,7 +201,7 @@ class Board:
         # A seperator between two rows where the characters lives
         # looks like this:
         ''' ┣   ╋   ╋   ╋   ╋   ╋   ╋   ┫ '''
-        seperator = f'{MIDDLE_CONNECT_RIGHT}   ' + (f'{FOUR_WAY}   ') * 6 + MIDDLE_CONNECT_LEFT
+        seperator = f'{MIDDLE_CONNECT_RIGHT}   ' + f'{FOUR_WAY}   ' * 6 + MIDDLE_CONNECT_LEFT
 
         # Go through every row while enumerating it
         for i, row in enumerate(self.board_arr):
@@ -222,20 +222,20 @@ class Board:
             info_box_width = 35
 
             # Top line of the info box
-            if (i == 0):
+            if i == 0:
                 board_row_str.append(f'{TOP_LEFT_CORNER}{HORIZONTAL_LINE * info_box_width}{TOP_RIGHT_CORNER}\n')
                 board_row_str.append(seperator)
                 board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
             # 2nd - 4th line
-            elif (1 <= i < 5):
-                if (i == 1):
+            elif 1 <= i < 5:
+                if i == 1:
                     room_info = f'Room Token: {self.room_tkn}' if self.room_tkn != '' else 'Local Room'
                     board_row_str.append(f'{VERTICAL_LINE}{room_info:^35}{VERTICAL_LINE}\n')
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
-                elif (i == 2):
+                elif i == 2:
                     info_chosen = f'{colored("Blue", "blue") if self.turn == 1 else colored("Red", "red")} Chose {self.last_move}' if self.last_move != None else ''
 
                     if info_chosen == '':
@@ -246,7 +246,7 @@ class Board:
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
-                elif (i == 3):
+                elif i == 3:
                     turn = f'{colored("Red", "red") if self.turn == 1 else colored("Blue", "blue")}'
                     info = 'It is ' + f'{turn:^5}' + '\'s turn'
 
@@ -254,7 +254,7 @@ class Board:
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
-                elif (i == 4):
+                elif i == 4:
                     board_row_str.append(VERTICAL_LINE + f'{f"Round {self.round}":^35}' + VERTICAL_LINE + '\n')
                     board_row_str.append(seperator)
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
@@ -265,12 +265,12 @@ class Board:
                     board_row_str.append(' ' * 10 + VERTICAL_LINE + ' ' * info_box_width + VERTICAL_LINE)
 
             # Closer
-            elif (i == 5):
+            elif i == 5:
                 board_row_str.append(f'{BOTTOM_LEFT_CORNER}{HORIZONTAL_LINE * info_box_width}{BOTTOM_RIGHT_CORNER}\n')
                 board_row_str.append(seperator)
 
             else:
-                board_row_str.append(f'\n{MIDDLE_CONNECT_RIGHT}   ' + (f'{FOUR_WAY}   ') * 6 + MIDDLE_CONNECT_LEFT)
+                board_row_str.append(f'\n{MIDDLE_CONNECT_RIGHT}   ' + f'{FOUR_WAY}   ' * 6 + MIDDLE_CONNECT_LEFT)
 
             board_str.append(board_row_str)
 
@@ -282,7 +282,7 @@ class Board:
         # Top Selector
         _top = []
         for i in range(7):
-            if (i + 1 == self.highlighted):
+            if i + 1 == self.highlighted:
                 _top.append(f'{D_TOP_LEFT_CORNER}   {D_TOP_RIGHT_CORNER}')
             else:
                 _top.append('    ')
@@ -300,7 +300,7 @@ class Board:
         # Bottom Selector
         _bottom = []
         for i in range(7):
-            if (i + 1 == self.highlighted):
+            if i + 1 == self.highlighted:
                 _bottom.append(f'{D_BOTTOM_LEFT_CORNER}   {D_BOTTOM_RIGHT_CORNER}')
             else:
                 _bottom.append('    ')
@@ -323,10 +323,10 @@ class Board:
 
     def get_full_diag_right(self, row, col):
         # If column is bigger than row (Top half of the board)
-        if (col > row):
+        if col > row:
 
             # If the row and column points to an area with only 3 in diagonal length
-            if (row <= 2 and col >= 4):
+            if row <= 2 and col >= 4:
 
                 # Return -1
                 return ['']
@@ -336,10 +336,10 @@ class Board:
             return [self.board_arr[j][i] for j, i in enumerate(range(col - row, 7))]
 
         # If the column is <= than row (Bottom half of the board)
-        if (col <= row):
+        if col <= row:
 
             # If the row and column points to an area with only 3 in diagonal length
-            if (row >= 3 and col <= 2):
+            if row >= 3 and col <= 2:
 
                 # Return -1
                 return ['']
@@ -350,10 +350,10 @@ class Board:
 
     def get_full_diag_left(self, row, col):
         # If the diagonal length is less than 3
-        if (row + col >= 9 or row + col <= 2):
+        if row + col >= 9 or row + col <= 2:
             return ['']
 
-        if (row + col >= 6):
+        if row + col >= 6:
 
             # ? THIS LOOKS INSANE AND I WOULD PROB FORGOT HOW IT WORKS
             # ? SO I'LL EXPLAIN THIS ONE
@@ -378,7 +378,7 @@ class Board:
             # and subtract 6 from it to get the starting row.
             return [self.board_arr[j + (row + col - 6)][i] for j, i in enumerate(range(6, 6 - (6 - (row - (6 - col))), -1))]
 
-        if (row + col < 6):
+        if row + col < 6:
             return [self.board_arr[j][i] for j, i in enumerate(range(col + row, -1, -1))]
 
     def check_win(self, char=''):
@@ -399,14 +399,14 @@ class Board:
         joined_stringified = [''.join(side) for side in get_around_highlighted]
 
         # Check if there is a 4 in a row
-        if (any((char * 4) in side for side in joined_stringified)):
+        if any((char * 4) in side for side in joined_stringified):
 
             # inform who won
             print(f'{colored("Blue", "blue") if self.turn == 1 else colored("Red", "red")} Won!')
             exit()
 
         # Check if there is any '.' inside the board (means it's empty)
-        if (not any('.' in brd for brd in board)):
+        if not any('.' in brd for brd in board):
 
             # If there is it's a tie
             print('Tie')
@@ -417,21 +417,21 @@ class Board:
 x = Board('')
 x.draw_board()
 
-while(True):
+while True:
     key = getcontrols()
 
-    if (key == 'L_KEY' and x.highlighted > 1):
+    if key == 'L_KEY' and x.highlighted > 1:
         x.highlighted -= 1
         x.draw_board()
         continue
 
-    if (key == 'R_KEY' and x.highlighted < 7):
+    if key == 'R_KEY' and x.highlighted < 7:
         x.highlighted += 1
         x.draw_board()
         continue
 
     # If enter key is pressed, means something is selected
-    if (key == 'ENTER_KEY' or key == 'SPACE_KEY'):
+    if key == 'ENTER_KEY' or key == 'SPACE_KEY':
         # Change the selected into the highlighted
         x.selected = x.highlighted
 

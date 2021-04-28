@@ -19,27 +19,27 @@ class _Windows:
 
         first_ch = getch()
 
-        if (first_ch == b' '):
+        if first_ch == b' ':
             retKey = 'SPACE_KEY'
 
-        if (first_ch == b'\r'):
+        if first_ch == b'\r':
             retKey = 'ENTER_KEY'
 
         # If CTRL + C is pressed
-        if (first_ch == b'\x03'):
+        if first_ch == b'\x03':
             exit()
 
-        if (first_ch == b'\x00' or first_ch == b'\xe0'):
+        if first_ch == b'\x00' or first_ch == b'\xe0':
 
             key = getch()
 
-            if (key == b'H'):
+            if key == b'H':
                 retKey = 'U_KEY'
-            elif (key == b'M'):
+            elif key == b'M':
                 retKey = 'R_KEY'
-            elif (key == b'P'):
+            elif key == b'P':
                 retKey = 'D_KEY'
-            elif (key == b'K'):
+            elif key == b'K':
                 retKey = 'L_KEY'
 
         return retKey
@@ -51,27 +51,27 @@ class _Unix:
         key = getch()
 
         # If CTRL + C is pressed
-        if (key == '\3'):
+        if key == '\3':
             exit()
 
-        if (key == ' '):
+        if key == ' ':
             retKey = 'SPACE_KEY'
 
-        if (key == '\r'):
+        if key == '\r':
             retKey = 'ENTER_KEY'
 
-        if (key == '\033'):
+        if key == '\033':
             getch()
 
             arrow_key = getch()
 
-            if (arrow_key == 'A'):
+            if arrow_key == 'A':
                 retKey = 'U_KEY'
-            elif (arrow_key == 'B'):
+            elif arrow_key == 'B':
                 retKey = 'D_KEY'
-            elif (arrow_key == 'C'):
+            elif arrow_key == 'C':
                 retKey = 'R_KEY'
-            elif (arrow_key == 'D'):
+            elif arrow_key == 'D':
                 retKey = 'L_KEY'
 
         return retKey
