@@ -1,3 +1,6 @@
+import threading
+
+from board_old import Board
 from init import UserSettings, UserSettingsSchema, get_config
 from InquirerPy import inquirer
 from utils.logs import err, warn
@@ -13,6 +16,8 @@ class Game:
         self._oponent = None
 
         self._user_conf = None
+
+        self._port = None
 
         def _play_local_action():
             create_or_join_actions = {
@@ -41,6 +46,8 @@ class Game:
 
         user_conf = get_config()
 
+        self._port = server.port
+
         print('In order for someone to join, they have to use this port below:')
         print(server.port)
 
@@ -50,9 +57,14 @@ class Game:
             while True:
                 opponent_info_recv = sock.recv_json()
 
+                if 'action' in opponent_info_recv and opponent_info_recv['action'] == 'exit':
+                    exit(0)
+
                 self._user_requesting.append(opponent_info_recv)
 
-        Thread(target=_get_requests, daemon=True, name='Game._create_game._get_requests()').start()
+        get_req_t = Thread(target=_get_requests, daemon=True, name='Game._create_game._get_requests()')
+        get_req_t.start()
+
 
         print('\rWaiting for a user to connect ...', end='')
         while True:
@@ -65,7 +77,7 @@ class Game:
             user = UserSettingsSchema().load(opponent_info)
 
             allow_user = inquirer.text(
-                message=f'\nThe user"{user.username}" is requesting to join, accept request?',
+                message=f'\nThe user "{user.username}" is requesting to join, accept request?',
                 validate=lambda text: text.lower() in ['y', 'yes', 'no', 'n'],
                 invalid_message='Please answer with a yes or no (y/n)'
             ).execute()
@@ -86,6 +98,38 @@ class Game:
                 del self._user_requesting[0]
                 continue
 
+        sock.send_json({'action': 'exit'})
+
+        # ! Selecting which column of the number
+        board = Board(self._port)
+        board.draw_board()
+
+        while True:
+            key = getcontrols(False)
+
+            if key == 'L_KEY' and board.highlighted > 1:
+                board.highlighted -= 1
+                board.draw_board()
+                continue
+
+            if key == 'R_KEY' and board.highlighted < 7:
+                board.highlighted += 1
+                board.draw_board()
+                continue
+
+            # If enter key is pressed, means something is selected
+            if key == 'ENTER_KEY' or key == 'SPACE_KEY':
+                # Change the selected into the highlighted
+                board.selected = board.highlighted
+
+                # Move
+                board.move(board.selected)
+
+                # Draw board
+                board.draw_board()
+
+                continue
+
     def _join_game(self):
 
         while True:
@@ -94,7 +138,14 @@ class Game:
                 port = input('Enter in the port number to join: ')
                 sock = WSock(user_conf, 'join', int(port))
 
-                print('yessssssss')
+                sock.send_json(UserSettingsSchema().dumps(user_conf))
+
+                host_response = sock.recv_str()
+
+                if host_response == 'declined':
+                    print('The host declined you from joining the game ...')
+                    return
+
 
             except Exception as e:
                 if str(e) == 'Cannot Join, Game Started':

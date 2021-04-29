@@ -94,7 +94,7 @@ class Server:
         def _track_keys():
             while True:
                 try:
-                    key = getcontrols()
+                    key = getcontrols(True)
 
                 except SystemExit as key_e:
                     print('Exiting ...')
@@ -157,6 +157,8 @@ class Server:
                     if amount_playing >= 2:
                         self._config['status'] = 'playing'
 
+                    c.send(bytes('joining-able', 'utf-8'))
+
                     continue
 
                 else:
@@ -193,7 +195,9 @@ class Server:
 
             if address == addr:
                 self._clients.remove((client, address))
-                self._clients_playing.pop((client, address))
+
+                if address in self._clients_playing:
+                    self._clients_playing.remove(address)
 
                 break
 
@@ -228,13 +232,9 @@ class WSock:
         #
         # Thread(target=_track_keys, daemon=True, name='_track_keys').start()
 
-        print('sent')
         self._sock.send(bytes(json.dumps(init_message), 'utf-8'))
 
-        print('recv')
         response = self._sock.recv(1024).decode()
-
-        print(response)
 
         if response == 'no-joining':
             raise Exception('Cannot Join, Game Started')
