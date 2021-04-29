@@ -187,9 +187,11 @@ class Board:
         # we construct the string first, then print it so it doesn't
         # flicker when we try to reprint the board. We add a newline
         # so the top of the baord won't be stuck to the top of the console
-        board_str = [['\n'], [' ' * 2 + ' ' * (4 * (self.highlighted - 1)) +
-                              colored('O', 'red' if self.turn == 1 else 'blue') + ' ' * 18],
-                     [f'{TOP_LEFT_CORNER}' + f'   {MIDDLE_CONNECT_DOWN}' * 6 + f'   {TOP_RIGHT_CORNER}']]
+        board_str = [
+            ['\n'],
+            [' ' * 2 + ' ' * (4 * (self.highlighted - 1)) + colored('O', 'red' if self.turn == 1 else 'blue') + ' ' * 18],
+            [f'{TOP_LEFT_CORNER}' + f'   {MIDDLE_CONNECT_DOWN}' * 6 + f'   {TOP_RIGHT_CORNER}']
+         ]
 
         # Adds the current color that is going to played on the top of the
         # column currently highlighted. It uses math that I really
@@ -412,32 +414,32 @@ class Board:
             exit()
 
 
-# # ! Selecting which column of the number
-# x = Board('')
-# x.draw_board()
-#
-# while True:
-#     key = getcontrols(False)
-#
-#     if key == 'L_KEY' and x.highlighted > 1:
-#         x.highlighted -= 1
-#         x.draw_board()
-#         continue
-#
-#     if key == 'R_KEY' and x.highlighted < 7:
-#         x.highlighted += 1
-#         x.draw_board()
-#         continue
-#
-#     # If enter key is pressed, means something is selected
-#     if key == 'ENTER_KEY' or key == 'SPACE_KEY':
-#         # Change the selected into the highlighted
-#         x.selected = x.highlighted
-#
-#         # Move
-#         x.move(x.selected)
-#
-#         # Draw board
-#         x.draw_board()
-#
-#         continue
+# ! Selecting which column of the number
+x = Board('')
+x.draw_board()
+
+while True:
+    key = getcontrols(False)
+
+    if key == 'L_KEY' and x.highlighted > 1:
+        x.highlighted -= 1
+        x.draw_board()
+        continue
+
+    if key == 'R_KEY' and x.highlighted < 7:
+        x.highlighted += 1
+        x.draw_board()
+        continue
+
+    # If enter key is pressed, means something is selected
+    if key == 'ENTER_KEY' or key == 'SPACE_KEY':
+        # Change the selected into the highlighted
+        x.selected = x.highlighted
+
+        # Move
+        x.move(x.selected)
+
+        # Draw board
+        x.draw_board()
+
+        continue
