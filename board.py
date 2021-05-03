@@ -24,31 +24,31 @@ class Board:
         ]
 
         self._board_str = [
-            ' ' * 80,   # Row 1
-            ' ' * 80,   # Row 2
-            ' ' * 80,   # Row 3
-            ' ' * 80,   # Row 4
-            ' ' * 80,   # Row 5
-            ' ' * 80,   # Row 6
-            ' ' * 80,   # Row 7
-            ' ' * 80,   # Row 8
-            ' ' * 80,   # Row 9
-            ' ' * 80,   # Row 10
-            ' ' * 80,   # Row 11
-            ' ' * 80,   # Row 12
-            ' ' * 80,   # Row 13
-            ' ' * 80,   # Row 14
-            ' ' * 80,   # Row 15
-            ' ' * 80,   # Row 16
-            ' ' * 80,   # Row 17
-            ' ' * 80,   # Row 18
-            ' ' * 80,   # Row 19
-            ' ' * 80,   # Row 20
-            ' ' * 80,   # Row 21
-            ' ' * 80,   # Row 22
-            ' ' * 80,   # Row 23
-            ' ' * 80,   # Row 24
-            ' ' * 80,   # Row 25
+            ' ' * 80,  # Row 1
+            ' ' * 80,  # Row 2
+            ' ' * 80,  # Row 3
+            ' ' * 80,  # Row 4
+            ' ' * 80,  # Row 5
+            ' ' * 80,  # Row 6
+            ' ' * 80,  # Row 7
+            ' ' * 80,  # Row 8
+            ' ' * 80,  # Row 9
+            ' ' * 80,  # Row 10
+            ' ' * 80,  # Row 11
+            ' ' * 80,  # Row 12
+            ' ' * 80,  # Row 13
+            ' ' * 80,  # Row 14
+            ' ' * 80,  # Row 15
+            ' ' * 80,  # Row 16
+            ' ' * 80,  # Row 17
+            ' ' * 80,  # Row 18
+            ' ' * 80,  # Row 19
+            ' ' * 80,  # Row 20
+            ' ' * 80,  # Row 21
+            ' ' * 80,  # Row 22
+            ' ' * 80,  # Row 23
+            ' ' * 80,  # Row 24
+            ' ' * 80  # Row 25
         ]
 
         # The height of each column
@@ -73,24 +73,29 @@ class Board:
 
         self.last_move = None
 
-        # Message row is at row 20
-        self.message = ''
+        self.info_box = SimpleNamespace(**{
+            'width': 38,
+            'height': 12,
+            'room_port': self.room_port,
+            'round': self.round,
+            'turn': self.turn
+        })
 
-        self.clear()
+        self.clear_screen()
 
         # A pre-created environment for testing purposes
-        self.board_arr = [
-            ['.', '.', '.', '.', '.', '.', '.'],
-            ['.', 'R', 'R', 'B', '.', '.', '.'],
-            ['.', 'B', 'B', 'B', '.', '.', '.'],
-            ['.', 'B', 'B', 'B', '.', '.', '.'],
-            ['.', 'R', 'B', 'R', 'B', 'B', '.'],
-            ['R', 'B', 'R', 'B', 'R', 'R', 'B']
-        ]
-        self.round = 3
-        self.highest = [1, 5, 5, 5, 2, 2, 1]
+        # self.board_arr = [
+        #     ['.', '.', 'B', 'R', '.', '.', '.'],
+        #     ['.', 'R', 'R', 'B', '.', '.', '.'],
+        #     ['.', 'B', 'B', 'B', '.', '.', '.'],
+        #     ['.', 'B', 'B', 'B', '.', '.', '.'],
+        #     ['.', 'R', 'B', 'R', 'B', 'B', '.'],
+        #     ['R', 'B', 'R', 'B', 'R', 'R', 'B']
+        # ]
+        # self.round = 3
+        # self.highest = [1, 5, 5, 5, 2, 2, 1]
 
-    def clear(self):
+    def clear_screen(self):
         """ Clears the console """
 
         if sysname == 'nt':
@@ -98,15 +103,60 @@ class Board:
         else:
             system('clear')
 
+    def clear_line(self, line):
+        if 0 > line > 30:
+            raise ValueError('Line number must be 0 <= line <= 30')
+
+        self._board_str[line] = ' ' * 80
+
+        return
+
+    def clear_board(self):
+        self._board_str = [
+            ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80,
+            ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80,
+            ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80, ' ' * 80
+        ]
+
+    def put_str(self, string: str, coord: tuple[int, int]) -> None:
+        """
+        Puts string into the board at specific coordinate\n
+        If there is an existing string, it will override it
+
+        Parameters
+        ----------
+        string : String to put into the board
+        coord  : Coordinate where the string is to be put
+        """
+        row, col = coord
+
+        if 0 > col > 80 or 0 > row > 30:
+            raise ValueError('Coordinates must be (0 <= row <= 30, 0 <= col <= 80)')
+
+        # print(string, len(string), len(color) if color is not None else '')
+
+        if len(string) > 80:
+            raise ValueError('String must be ≤ 80 characters')
+
+        # These two variables make sure that the string won't go over 80 characters
+        end = col + len(string) + 1 if col + len(string) + 1 <= 80 else 80
+        beg = col if col + len(string) + 1 <= 80 else col - len(string)
+
+        self._board_str[row] = self._board_str[row][:beg] + string + self._board_str[row][end:]
+
+        return
+
     def move(self, col):
 
         # Get the highest in the column
         highest_on_column = self.highest[col - 1]
 
+        self.clear_line(16)
+
         # if the highest is bigger than 5, means column is full
         if highest_on_column > 5:
             # Change the message that will be printed
-            self.put_str(f'Column {col} is Full! Select a different column', (21, 0))
+            self.put_str(f'Column {col} is Full! Select a different column', (16, 0))
 
             # Break out of the function
             return
@@ -141,41 +191,14 @@ class Board:
             # both players have moved
             self.round += 1
 
-    def put_str(self, string: str, coord: tuple[int, int], color=None) -> None:
-        """
-        Puts string into the board at specific coordinate\n
-        If there is an existing string, it will override it
-
-        Parameters
-        ----------
-        color  : If the string was ANSI escaped for color
-        string : String to put into the board
-        coord  : Coordinate where the string is to be put
-        """
-        row, col = coord
-
-        if 0 > col > 80 or 0 > row > 30:
-            raise ValueError('Coordinates must be (0 <= row <= 30, 0 <= col <= 80)')
-
-        # print(string, len(string), len(color) if color is not None else '')
-
-        if len(string) > 80:
-            if color is None or (color is not None and (len(string) - len(color)) > 80):
-                raise ValueError('String must be ≤ 80 characters')
-
-        # These two variables make sure that the string won't go over 80 characters
-        end = col + len(string) + 1 if col + len(string) + 1 <= 80 else 80
-        beg = col if col + len(string) + 1 <= 80 else col - len(string)
-
-        self._board_str[row] = self._board_str[row][:beg] + string + self._board_str[row][end:]
-
-        return
-
-    def draw_board(self):
+    def create_board(self):
 
         self.highlighted = 4
 
         self.put_str(colored('O', 'red' if self.turn == 1 else 'blue'), (0, 2 + 4 * (self.highlighted - 1)))
+
+        for i in range(1, 8):
+            self.put_str(str(i), (16, 2 + 4 * (i - 1)))
 
         # Top Row of the board
         self.put_str(TOP_LEFT_CORNER, (1, 0))
@@ -188,13 +211,11 @@ class Board:
         # Middle Areas
         for row, i in enumerate(range(2, 13, 2)):
 
-            input_str = f"{VERTICAL_LINE} {colored('O', 'red')} "
-
+            input_str = f""
             for col in self.board_arr[row]:
-                input_str += f'{VERTICAL_LINE} {colored("O", "red") if col == "R" else colored("O", "blue") if col == "B" else col} '
-                # self.put_str(f"{VERTICAL_LINE} {colored('O', 'red')} ", (i, 0), colored('', 'red'))
+                input_str += f'{VERTICAL_LINE} {col} '
 
-            self.put_str(f"{input_str}{VERTICAL_LINE}", (i, 0), colored('', 'red') * 7)
+            self.put_str(f"{input_str}{VERTICAL_LINE}", (i, 0))
 
         for i in range(2, 13, 2):
 
@@ -207,6 +228,46 @@ class Board:
         self.put_str(BOTTOM_LEFT_CORNER, (14, 0))
         self.put_str(HORIZONTAL_LINE * 27, (14, 1))
         self.put_str(BOTTOM_RIGHT_CORNER, (14, 28))
+
+        self.put_str(f'Column {5} is Full! Select a different column', (18, 0))
+
+    def create_info_box(self):
+
+        props = self.info_box
+
+        for i in range(props.height - 1):
+            self.put_str(f"{VERTICAL_LINE}{' ' * 38}{VERTICAL_LINE}", (i + 2, 38))
+
+        self.put_str(f"{TOP_LEFT_CORNER}{HORIZONTAL_LINE * props.width}{TOP_RIGHT_CORNER}", (1, 38))
+        self.put_str(
+            f"{BOTTOM_LEFT_CORNER}{HORIZONTAL_LINE * props.width}{BOTTOM_RIGHT_CORNER}",
+            (1 + props.height, 38)
+        )
+
+        self.put_str(
+            f"{('Local Room' if props.room_port is None else 'Room Token: '+str(props.room_port)):^38}{VERTICAL_LINE}",
+            (2, 39)
+        )
+
+    def edit_info_box(self):
+        pass
+
+    def highlight_column(self, col):
+        self.highlighted = col
+
+        self.put_str(f'{DrawingBlocks().double_namespace.D_TOP_LEFT_CORNER}   {D_TOP_RIGHT_CORNER}', (15, col * 4))
+
+    def draw_board(self):
+
+        self.create_board()
+        self.create_info_box()
+        self.highlight_column(1)
+
+        # Parses the color
+        for i, row in enumerate(self._board_str):
+            self._board_str[i] = \
+                row[:30].replace('B', colored('O', 'blue')).replace('R', colored('O', 'red'), 7) + \
+                row[30:]
 
         concat_board_str = ''
 
